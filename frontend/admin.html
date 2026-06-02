@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi a pálya? 2026 — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #1a3a8a;
+  --blue-mid: #2a50b8;
+  --blue-light: #eef2ff;
+  --orange: #ff6b35;
+  --green: #16a34a;
+  --green-light: #dcfce7;
+  --yellow: #ca8a04;
+  --yellow-light: #fef9c3;
+  --red: #dc2626;
+  --red-light: #fee2e2;
+  --gray-50: #f8f8f6;
+  --gray-100: #f0efe9;
+  --gray-200: #e2e1db;
+  --gray-400: #9ca3af;
+  --gray-600: #4b5563;
+  --gray-900: #111827;
+  --sidebar-w: 220px;
+  --header-h: 56px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+/* LOGIN */
+#login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--blue);
+  position: relative; overflow: hidden;
+}
+#login-screen::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255,107,53,0.25) 0%, transparent 55%),
+              radial-gradient(circle at 10% 90%, rgba(42,80,184,0.4) 0%, transparent 50%);
+}
+.login-card {
+  background: #fff; border-radius: 20px; padding: 40px 36px;
+  width: 100%; max-width: 380px; position: relative; z-index: 1;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.login-logo { text-align: center; margin-bottom: 28px; }
+.login-logo h1 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: var(--blue); }
+.login-logo p { color: var(--gray-400); font-size: 13px; margin-top: 4px; }
+.login-badge { display: inline-block; background: var(--blue-light); color: var(--blue); font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.5px; margin-bottom: 8px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-600); margin-bottom: 6px; }
+.form-group input {
+  width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm); font-size: 14px; font-family: 'DM Sans', sans-serif;
+  outline: none; transition: border-color 0.15s;
+}
+.form-group input:focus { border-color: var(--blue); }
+.role-select { display: flex; gap: 8px; margin-bottom: 20px; }
+.role-btn { flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); background: #fff; cursor: pointer; font-size: 12px; font-family: 'DM Sans', sans-serif; text-align: center; transition: all 0.15s; }
+.role-btn.active { border-color: var(--blue); background: var(--blue-light); color: var(--blue); font-weight: 500; }
+.login-btn {
+  width: 100%; background: var(--blue); color: #fff; border: none;
+  border-radius: var(--radius-sm); padding: 13px; font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+}
+.login-btn:hover { opacity: 0.9; }
+.demo-hint { margin-top: 14px; text-align: center; font-size: 12px; color: var(--gray-400); }
+
+/* LAYOUT */
+#app-layout { display: none; min-height: 100vh; }
+.sidebar {
+  position: fixed; top: 0; left: 0; width: var(--sidebar-w);
+  height: 100vh; background: var(--blue); display: flex; flex-direction: column;
+  z-index: 100; overflow-y: auto;
+}
+.sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.sidebar-logo h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: #fff; }
+.sidebar-logo p { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.sidebar-role { margin: 10px 18px; background: rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; }
+.sidebar-role span { font-size: 11px; color: rgba(255,255,255,0.6); display: block; }
+.sidebar-role strong { font-size: 13px; color: #fff; }
+nav { padding: 8px 0; flex: 1; }
+.nav-section { padding: 10px 18px 4px; font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
+.nav-link {
+  display: flex; align-items: center; gap: 10px; padding: 9px 18px;
+  color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer;
+  border-left: 3px solid transparent; transition: all 0.15s;
+}
+.nav-link:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-link.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: #ffd700; }
+.nav-link .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge { margin-left: auto; background: var(--orange); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.sidebar-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.1); }
+.logout-btn { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); border-radius: var(--radius-sm); padding: 9px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.logout-btn:hover { background: rgba(255,255,255,0.15); }
+
+/* MAIN */
+.main-area { margin-left: var(--sidebar-w); min-height: 100vh; }
+.topbar { height: var(--header-h); background: #fff; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; position: sticky; top: 0; z-index: 50; }
+.topbar h1 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--gray-900); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.event-badge { background: var(--green-light); color: var(--green); font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+.event-badge::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.page { display: none; padding: 24px 28px 40px; }
+.page.active { display: block; }
+
+/* CARDS */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: var(--radius); padding: 18px 20px; border: 1px solid var(--gray-200); }
+.stat-card .label { font-size: 12px; color: var(--gray-400); font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.stat-card .value { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--gray-900); }
+.stat-card .sub { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+.stat-card .trend-up { color: var(--green); font-size: 12px; font-weight: 500; }
+.stat-card .trend-warn { color: var(--yellow); font-size: 12px; font-weight: 500; }
+
+.card { background: #fff; border-radius: var(--radius); border: 1px solid var(--gray-200); margin-bottom: 20px; overflow: hidden; }
+.card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; }
+.card-header h3 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.card-body { padding: 20px; }
+
+/* TABLE */
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; font-weight: 600; color: var(--gray-400); letter-spacing: 0.5px; text-transform: uppercase; padding: 10px 14px; text-align: left; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--gray-50); }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+/* QR TOKEN PANEL */
+.token-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.token-card { background: #fff; border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 18px; text-align: center; position: relative; overflow: hidden; }
+.token-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+.tc-energia::before { background: #22c55e; }
+.tc-ipar::before { background: #3b82f6; }
+.tc-kiber::before { background: #a855f7; }
+.tc-jarmű::before { background: #f97316; }
+.tc-fény::before { background: #eab308; }
+.tc-smart::before { background: #06b6d4; }
+.tc-3d::before { background: #ec4899; }
+.tc-háló::before { background: #64748b; }
+.token-zone { font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+.token-emoji { font-size: 28px; margin-bottom: 8px; }
+.token-code { font-family: monospace; font-size: 18px; font-weight: 700; color: var(--gray-900); letter-spacing: 3px; background: var(--gray-100); padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 8px; display: block; }
+.token-timer { font-size: 12px; color: var(--gray-400); display: flex; align-items: center; justify-content: center; gap: 5px; }
+.timer-bar { width: 80px; height: 4px; background: var(--gray-200); border-radius: 2px; overflow: hidden; display: inline-block; vertical-align: middle; }
+.timer-fill { height: 100%; background: var(--blue); transition: width 1s linear; }
+.token-count { position: absolute; top: 10px; right: 10px; background: var(--blue-light); color: var(--blue); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+
+/* CHARTS (CSS-based) */
+.bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { width: 120px; font-size: 13px; color: var(--gray-600); text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; background: var(--gray-100); border-radius: 4px; height: 22px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: #fff; transition: width 1s ease; }
+.bar-val { width: 40px; font-size: 13px; font-weight: 600; color: var(--gray-900); }
+
+.donut-wrap { display: flex; align-items: center; gap: 24px; }
+.donut { position: relative; width: 120px; height: 120px; }
+.donut svg { transform: rotate(-90deg); }
+.donut-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+.donut-label .big { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--gray-900); }
+.donut-label .sm { font-size: 11px; color: var(--gray-400); }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: var(--blue-mid); }
+.btn-danger { background: var(--red-light); color: var(--red); }
+.btn-outline { background: #fff; color: var(--gray-600); border: 1px solid var(--gray-200); }
+.btn-outline:hover { background: var(--gray-50); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-green { background: var(--green-light); color: var(--green); }
+
+/* ALERT */
+.alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+.alert-warn { background: var(--yellow-light); color: #713f12; border: 1px solid #fde68a; }
+.alert-info { background: var(--blue-light); color: #1e3a8a; border: 1px solid #bfdbfe; }
+
+/* LOG */
+.log-entry { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-200); font-size: 13px; }
+.log-entry:last-child { border-bottom: none; }
+.log-time { color: var(--gray-400); font-size: 11px; white-space: nowrap; margin-top: 2px; font-family: monospace; }
+.log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.log-msg { flex: 1; }
+.log-sub { color: var(--gray-400); font-size: 11px; margin-top: 1px; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: var(--radius); padding: 24px; max-width: 440px; width: 100%; margin: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.modal p { font-size: 14px; color: var(--gray-600); margin-bottom: 20px; line-height: 1.5; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--blue-light); color: var(--blue); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+
+/* GRID UTILS */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-gap { display: flex; align-items: center; gap: 8px; }
+.text-muted { color: var(--gray-400); font-size: 13px; }
+.mt-16 { margin-top: 16px; }
+.section-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+
+/* ROLE-BASED hiding */
+.admin-only, .animator-only { display: none; }
+body.role-admin .admin-only { display: block; }
+body.role-admin .admin-only.flex-between { display: flex; }
+body.role-admin .admin-only.flex-gap { display: flex; }
+body.role-animator .animator-only { display: block; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="login-badge">Admin Panel</span>
+      <h1>Mi a pálya? 2026</h1>
+      <p>Magyar Elektrotechnikai Egyesület</p>
+    </div>
+    <div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:10px;font-weight:500;">Belépési szerepkör:</p>
+      <div class="role-select">
+        <button class="role-btn active" onclick="setRole('admin',this)">🔑 Rendszergazda</button>
+        <button class="role-btn" onclick="setRole('animator',this)">🎪 Animátor</button>
+        <button class="role-btn" onclick="setRole('exhibitor',this)">🏢 Kiállító</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>E-mail cím</label>
+      <input type="email" id="login-email" value="admin@mee.hu" placeholder="admin@mee.hu">
+    </div>
+    <div class="form-group">
+      <label>Jelszó</label>
+      <input type="password" id="login-pass" value="••••••••" placeholder="Jelszó">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Belépés →</button>
+    <p class="demo-hint">Demo: bármilyen adat elfogadott · Szerepkör befolyásolja a látható menüpontokat</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h2>Mi a pálya? ⚡</h2>
+      <p>Admin Panel · 2026</p>
+    </div>
+    <div class="sidebar-role">
+      <span>Bejelentkezve:</span>
+      <strong id="sidebar-role-label">Rendszergazda</strong>
+    </div>
+    <nav>
+      <div class="nav-section">Áttekintés</div>
+      <div class="nav-link active" onclick="showPage('p-dashboard',this)"><span class="icon">📊</span> Dashboard</div>
+      <div class="nav-link" onclick="showPage('p-live',this)"><span class="icon">🔴</span> Élő nézet <span class="nav-badge">ÉLŐ</span></div>
+
+      <div class="nav-section">Pecsétrendszer</div>
+      <div class="nav-link" onclick="showPage('p-qr',this)"><span class="icon">📱</span> QR tokenek</div>
+      <div class="nav-link" onclick="showPage('p-stamps',this)"><span class="icon">📖</span> Pecsétstatisztika</div>
+
+      <div class="nav-section admin-only">Felhasználók</div>
+      <div class="nav-link admin-only" onclick="showPage('p-users',this)"><span class="icon">👥</span> Regisztráltak</div>
+      <div class="nav-link admin-only" onclick="showPage('p-security',this)"><span class="icon">🔐</span> Biztonsági napló</div>
+
+      <div class="nav-section admin-only">Rendszer</div>
+      <div class="nav-link admin-only" onclick="showPage('p-settings',this)"><span class="icon">⚙️</span> Beállítások</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="doLogout()">← Kijelentkezés</button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <div class="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="topbar-right">
+        <span class="event-badge">Fesztivál aktív</span>
+        <span style="font-size:13px;color:#6b7280;" id="topbar-time"></span>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="p-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">👤 Regisztrált diák</div>
+          <div class="value" id="stat-users">847</div>
+          <div class="sub"><span class="trend-up">+23 az utolsó órában</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">📖 Pecsétek ma</div>
+          <div class="value" id="stat-stamps">3 241</div>
+          <div class="sub"><span class="trend-up">átlag 3,8 / fő</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">✅ Befejezett profil</div>
+          <div class="value">312</div>
+          <div class="sub"><span class="trend-warn">36,8% konverzió</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">🚫 Visszautasított QR</div>
+          <div class="value" id="stat-blocked">14</div>
+          <div class="sub" style="color:#dc2626;font-size:12px;">7 gyanús kísérlet ⚠️</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Látogatók zónánként</h3><span class="text-muted">ma</span></div>
+          <div class="card-body">
+            <div class="bar-chart" id="zone-bars"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Pályaprofil eloszlás</h3><span class="text-muted">847 diák</span></div>
+          <div class="card-body">
+            <div class="donut-wrap">
+              <div class="donut">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="#f0efe9" stroke-width="16"/>
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="#1a3a8a" stroke-width="16" stroke-dasharray="277" stroke-dashoffset="0" opacity="0.15"/>
+                  <circle id="d1" cx="60" cy="60" r="44" fill="none" stroke="#22c55e" stroke-width="16" stroke-dasharray="80 197" stroke-dashoffset="0"/>
+                  <circle id="d2" cx="60" cy="60" r="44" fill="none" stroke="#3b82f6" stroke-width="16" stroke-dasharray="60 217" stroke-dashoffset="-80"/>
+                  <circle id="d3" cx="60" cy="60" r="44" fill="none" stroke="#a855f7" stroke-width="16" stroke-dasharray="50 227" stroke-dashoffset="-140"/>
+                  <circle id="d4" cx="60" cy="60" r="44" fill="none" stroke="#f97316" stroke-width="16" stroke-dasharray="40 237" stroke-dashoffset="-190"/>
+                  <circle id="d5" cx="60" cy="60" r="44" fill="none" stroke="#eab308" stroke-width="16" stroke-dasharray="30 247" stroke-dashoffset="-230"/>
+                  <circle id="d6" cx="60" cy="60" r="44" fill="none" stroke="#06b6d4" stroke-width="16" stroke-dasharray="17 260" stroke-dashoffset="-260"/>
+                </svg>
+                <div class="donut-label"><div class="big">847</div><div class="sm">diák</div></div>
+              </div>
+              <div class="donut-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Energia (29%)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Ipar 4.0 (22%)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Kiberbiztonság (18%)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> Járműipar (14%)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div> Fény & Világ. (11%)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> Egyéb (6%)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Legutóbbi aktivitás</h3><span class="text-muted">valós idejű</span></div>
+        <div class="card-body" id="activity-log"></div>
+      </div>
+    </div>
+
+    <!-- LIVE VIEW -->
+    <div class="page" id="p-live">
+      <div class="alert alert-info">🔴 Élő nézet — 30 másodpercenként automatikusan frissül. <strong>847 diák aktív</strong> a helyszínen.</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">⚡ Utolsó pecsét</div><div class="value" style="font-size:20px;margin-top:4px;" id="last-stamp-zone">Energia</div><div class="sub" id="last-stamp-time">10 másodperce</div></div>
+        <div class="stat-card"><div class="label">📈 Beolvasás / perc</div><div class="value" id="scans-per-min">12</div><div class="sub">csúcs: 34/perc</div></div>
+        <div class="stat-card"><div class="label">🏆 Legtöbb pecsét</div><div class="value" style="font-size:20px;margin-top:4px;">Kovács Bence</div><div class="sub">8/8 teljes ✨</div></div>
+        <div class="stat-card"><div class="label">⚠️ Gyanús kísérlet</div><div class="value" style="color:#dc2626;" id="suspicious-count">7</div><div class="sub" style="color:#dc2626;">lejárt tokennel</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Forgalom idővonalon</h3><span class="text-muted">pecsét/10 perc</span></div>
+          <div class="card-body">
+            <div style="display:flex;align-items:flex-end;gap:4px;height:100px;">
+              <div id="timeline-bars" style="display:flex;align-items:flex-end;gap:4px;height:100px;width:100%;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+              <span class="text-muted">08:00</span><span class="text-muted">10:00</span><span class="text-muted">12:00</span><span class="text-muted">14:00</span><span class="text-muted">Most</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Zóna telítettség</h3><span class="text-muted">most</span></div>
+          <div class="card-body" id="zone-capacity"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR TOKENS -->
+    <div class="page" id="p-qr">
+      <div class="alert alert-warn">⏱ A tokenek <strong>5 percenként automatikusan megváltoznak</strong>. Az animátorok csak az aktív tokent fogadhatják el. Lejárt vagy ismeretlen tokennel nem szerezhető pecsét.</div>
+      <div class="flex-between" style="margin-bottom:16px;">
+        <h2 class="section-title" style="margin:0;">Aktív QR tokenek</h2>
+        <button class="btn btn-primary admin-only" onclick="regenerateAll()">🔄 Összes újragenerálás</button>
+      </div>
+      <div class="token-grid" id="token-grid"></div>
+    </div>
+
+    <!-- STAMP STATS -->
+    <div class="page" id="p-stamps">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Pecsétgyűjtési arány zónánként</h3></div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Zóna</th><th>Gyűjtők</th><th>Arány</th><th>Avg. idő</th></tr></thead>
+              <tbody id="stamp-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Pecsétek száma felhasználónként</h3></div>
+          <div class="card-body">
+            <div class="bar-chart">
+              <div class="bar-row"><div class="bar-label">8 pecsét (teljes)</div><div class="bar-track"><div class="bar-fill" style="width:12%;background:#1a3a8a;">102</div></div></div>
+              <div class="bar-row"><div class="bar-label">6–7 pecsét</div><div class="bar-track"><div class="bar-fill" style="width:22%;background:#3b82f6;">187</div></div></div>
+              <div class="bar-row"><div class="bar-label">4–5 pecsét</div><div class="bar-track"><div class="bar-fill" style="width:35%;background:#06b6d4;">297</div></div></div>
+              <div class="bar-row"><div class="bar-label">2–3 pecsét</div><div class="bar-track"><div class="bar-fill" style="width:22%;background:#22c55e;">187</div></div></div>
+              <div class="bar-row"><div class="bar-label">0–1 pecsét</div><div class="bar-track"><div class="bar-fill" style="width:9%;background:#9ca3af;">74</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="p-users">
+      <div class="flex-between" style="margin-bottom:16px;">
+        <div class="flex-gap">
+          <input type="text" placeholder="🔍 Keresés neve, tokenje alapján…" style="padding:9px 14px;border:1px solid #e2e1db;border-radius:8px;font-size:13px;width:260px;font-family:'DM Sans',sans-serif;outline:none;">
+          <select style="padding:9px 12px;border:1px solid #e2e1db;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+            <option>Összes profil</option>
+            <option>Energia</option>
+            <option>Ipar 4.0</option>
+            <option>Kiberbiztonság</option>
+          </select>
+        </div>
+        <button class="btn btn-outline" onclick="exportCSV()">⬇️ CSV export</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Diák</th><th>Session token</th><th>Regisztrált</th><th>Pecsétek</th><th>Profil</th><th>Státusz</th><th></th></tr></thead>
+          <tbody id="user-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECURITY LOG -->
+    <div class="page" id="p-security">
+      <div class="alert alert-warn">⚠️ <strong>7 gyanús beolvasási kísérlet</strong> az elmúlt 2 órában — lejárt tokenekkel. IP-cím alapú rate limiting aktív.</div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Biztonsági eseménynapló</h3></div>
+          <div class="card-body" id="security-log"></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><h3>Védelmi státusz</h3></div>
+            <div class="card-body">
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div class="flex-between"><span style="font-size:13px;">⏱ Token lejárat</span><span class="badge badge-green">5 perc · Aktív</span></div>
+                <div class="flex-between"><span style="font-size:13px;">🔄 Egyszeri felhasználás</span><span class="badge badge-green">Aktív</span></div>
+                <div class="flex-between"><span style="font-size:13px;">🚦 Rate limiting</span><span class="badge badge-green">10 req/perc/IP</span></div>
+                <div class="flex-between"><span style="font-size:13px;">🔐 HTTPS</span><span class="badge badge-green">Aktív</span></div>
+                <div class="flex-between"><span style="font-size:13px;">🛡 CSRF védelem</span><span class="badge badge-green">Aktív</span></div>
+                <div class="flex-between"><span style="font-size:13px;">📋 Audit napló</span><span class="badge badge-green">Aktív</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Gyanús IP-k</h3></div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>IP-cím</th><th>Kísérletek</th><th>Művelet</th></tr></thead>
+                <tbody>
+                  <tr><td><code>192.168.4.55</code></td><td><span class="badge badge-yellow">5×</span></td><td><button class="btn btn-danger btn-sm" onclick="showBlockModal('192.168.4.55')">Blokk</button></td></tr>
+                  <tr><td><code>10.0.0.128</code></td><td><span class="badge badge-red">12×</span></td><td><button class="btn btn-danger btn-sm" onclick="showBlockModal('10.0.0.128')">Blokk</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="p-settings">
+      <div class="two-col">
+        <div>
+          <div class="card">
+            <div class="card-header"><h3>Zónák kezelése</h3></div>
+            <div class="card-body" id="zone-settings"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><h3>Token beállítások</h3></div>
+            <div class="card-body">
+              <div class="form-group"><label>Token érvényességi idő (perc)</label><input type="number" value="5" min="1" max="30"></div>
+              <div class="form-group"><label>Max. kísérletek / perc / IP</label><input type="number" value="10" min="1" max="60"></div>
+              <div class="form-group"><label>Session token hossza</label><input type="number" value="16" min="8" max="32"></div>
+              <button class="btn btn-primary">💾 Mentés</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Admin felhasználók</h3></div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Felhasználó</th><th>Szerepkör</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><div class="flex-gap"><div class="avatar">BA</div> Bence Admin</div></td><td><span class="badge badge-blue">Rendszergazda</span></td><td><button class="btn btn-outline btn-sm">Szerk.</button></td></tr>
+                  <tr><td><div class="flex-gap"><div class="avatar">AK</div> Animátor Kata</div></td><td><span class="badge badge-green">Animátor · Energia</span></td><td><button class="btn btn-outline btn-sm">Szerk.</button></td></tr>
+                  <tr><td><div class="flex-gap"><div class="avatar">KI</div> Kiállító István</div></td><td><span class="badge badge-gray">Kiállító · Olvasó</span></td><td><button class="btn btn-outline btn-sm">Szerk.</button></td></tr>
+                </tbody>
+              </table>
+              <button class="btn btn-primary mt-16">+ Új felhasználó</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="block-modal">
+  <div class="modal">
+    <h3>⛔ IP-cím blokkolása</h3>
+    <p>Biztosan blokkolod a <strong id="modal-ip"></strong> IP-címet? Ez megakadályoz minden további QR-beolvasási kísérletet erről a hálózatról.</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal()">Mégse</button>
+      <button class="btn btn-danger" onclick="confirmBlock()">🚫 Blokkolás</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// DATA
+const zones = [
+  { id:"energia", name:"Zöld Energia", emoji:"⚡", color:"tc-energia", visitors:312, pct:90 },
+  { id:"ipar", name:"Ipar 4.0", emoji:"🤖", color:"tc-ipar", visitors:287, pct:82 },
+  { id:"kiber", name:"Kiberbiztonság", emoji:"🔐", color:"tc-kiber", visitors:264, pct:76 },
+  { id:"jarmű", name:"Smart Mobilitás", emoji:"🚗", color:"tc-jarmű", visitors:198, pct:57 },
+  { id:"fény", name:"Fény & Világítás", emoji:"💡", color:"tc-fény", visitors:176, pct:51 },
+  { id:"smart", name:"Okos Otthon", emoji:"🏠", color:"tc-smart", visitors:154, pct:44 },
+  { id:"3d", name:"3D Világ", emoji:"🖨", color:"tc-3d", visitors:143, pct:41 },
+  { id:"háló", name:"Hálózatok", emoji:"📡", color:"tc-háló", visitors:121, pct:35 }
+];
+
+const profiles = ["Energia Innovátor","Ipar 4.0 Mérnök","Kiberbiztonsági Spec.","Mobilitás Innovátor","Fénytechnikus","IoT Tervező","3D Alkotó","Hálózati Guru"];
+const profileEmojis = ["⚡","🤖","🔐","🚗","💡","🏠","🖨","📡"];
+
+let tokens = {};
+let tokenTimers = {};
+let timerSeconds = {};
+let currentRole = 'admin';
+let blockTarget = '';
+
+function genToken() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:8}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function initTokens() {
+  zones.forEach(z => {
+    tokens[z.id] = genToken();
+    timerSeconds[z.id] = 300;
+  });
+}
+
+function renderTokenGrid() {
+  const grid = document.getElementById('token-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  zones.forEach(z => {
+    const col = document.createElement('div');
+    col.className = `token-card ${z.color}`;
+    const used = Math.floor(Math.random()*30)+5;
+    col.innerHTML = `
+      <div class="token-count">${used} beolvasás</div>
+      <div class="token-zone">${z.name}</div>
+      <div class="token-emoji">${z.emoji}</div>
+      <code class="token-code" id="tc-${z.id}">${tokens[z.id]}</code>
+      <div class="token-timer">
+        <span id="tt-${z.id}">${Math.floor(timerSeconds[z.id]/60)}:${String(timerSeconds[z.id]%60).padStart(2,'0')}</span>
+        <span class="timer-bar"><span class="timer-fill" id="tf-${z.id}" style="width:${(timerSeconds[z.id]/300)*100}%"></span></span>
+      </div>
+    `;
+    grid.appendChild(col);
+  });
+}
+
+function tickTokens() {
+  zones.forEach(z => {
+    timerSeconds[z.id]--;
+    if (timerSeconds[z.id] <= 0) {
+      tokens[z.id] = genToken();
+      timerSeconds[z.id] = 300;
+      const el = document.getElementById(`tc-${z.id}`);
+      if (el) { el.textContent = tokens[z.id]; el.style.color = '#22c55e'; setTimeout(()=>{ if(el) el.style.color=''; }, 500); }
+    }
+    const tt = document.getElementById(`tt-${z.id}`);
+    const tf = document.getElementById(`tf-${z.id}`);
+    const s = timerSeconds[z.id];
+    if (tt) tt.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    if (tf) tf.style.width = `${(s/300)*100}%`;
+  });
+}
+
+function regenerateAll() {
+  zones.forEach(z => { tokens[z.id] = genToken(); timerSeconds[z.id] = 300; });
+  renderTokenGrid();
+  showToast('🔄 Összes token újragenerálva!');
+}
+
+// BAR CHART
+function renderZoneBars() {
+  const container = document.getElementById('zone-bars');
+  if (!container) return;
+  const max = Math.max(...zones.map(z=>z.visitors));
+  container.innerHTML = zones.map(z => `
+    <div class="bar-row">
+      <div class="bar-label">${z.emoji} ${z.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(z.visitors/max*100)}%;background:var(--blue);">${z.visitors}</div></div>
+      <div class="bar-val">${z.visitors}</div>
+    </div>`).join('');
+}
+
+// TIMELINE
+function renderTimeline() {
+  const c = document.getElementById('timeline-bars');
+  if (!c) return;
+  const vals = [8,12,18,24,32,28,35,42,38,45,50,48,52,34,12];
+  const max = Math.max(...vals);
+  c.innerHTML = vals.map((v,i) => `<div style="flex:1;background:${i===vals.length-1?'#1a3a8a':'#bfdbfe'};height:${Math.round(v/max*90)+10}%;border-radius:3px 3px 0 0;" title="${v} beolvasás"></div>`).join('');
+}
+
+// ZONE CAPACITY
+function renderZoneCapacity() {
+  const c = document.getElementById('zone-capacity');
+  if (!c) return;
+  c.innerHTML = zones.map(z => {
+    const color = z.pct > 80 ? '#dc2626' : z.pct > 60 ? '#ca8a04' : '#16a34a';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <span style="width:24px;text-align:center;">${z.emoji}</span>
+      <div style="flex:1;background:#f0efe9;border-radius:4px;height:18px;overflow:hidden;">
+        <div style="width:${z.pct}%;background:${color};height:100%;border-radius:4px;"></div>
+      </div>
+      <span style="font-size:12px;font-weight:600;color:${color};width:36px;">${z.pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+// STAMP TABLE
+function renderStampTable() {
+  const t = document.getElementById('stamp-table');
+  if (!t) return;
+  t.innerHTML = zones.map(z => {
+    const pct = Math.round(z.visitors / 847 * 100);
+    const badge = pct > 70 ? 'badge-green' : pct > 40 ? 'badge-yellow' : 'badge-gray';
+    const mins = Math.floor(Math.random()*8)+3;
+    return `<tr>
+      <td><div class="flex-gap">${z.emoji} ${z.name}</div></td>
+      <td>${z.visitors}</td>
+      <td><span class="badge ${badge}">${pct}%</span></td>
+      <td>${mins} perc</td>
+    </tr>`;
+  }).join('');
+}
+
+// USERS
+const sampleUsers = [
+  { name:"Kovács Bence", token:"A3KX9M2P", time:"08:14", stamps:8, profile:"⚡ Energia Innovátor", status:"active" },
+  { name:"Nagy Eszter", token:"B7QR4NVL", time:"08:27", stamps:6, profile:"🤖 Ipar 4.0 Mérnök", status:"active" },
+  { name:"Tóth Márk", token:"C2HJ8WKE", time:"09:05", stamps:4, profile:"🔐 Kiberbiztonsági Spec.", status:"active" },
+  { name:"Varga Luca", token:"D5PT3XYZ", time:"09:32", stamps:3, profile:"🚗 Mobilitás Innovátor", status:"active" },
+  { name:"Horváth Ádám", token:"E1MQ6LRS", time:"10:01", stamps:7, profile:"⚡ Energia Innovátor", status:"active" },
+  { name:"Szabó Petra", token:"F9GN2UHT", time:"10:18", stamps:2, profile:"💡 Fénytechnikus", status:"inactive" },
+  { name:"Kiss Dávid", token:"G4FK7VWA", time:"10:44", stamps:5, profile:"🏠 IoT Tervező", status:"active" },
+  { name:"Molnár Réka", token:"H8CE5MBN", time:"11:03", stamps:1, profile:"🖨 3D Alkotó", status:"inactive" },
+];
+
+function renderUserTable() {
+  const t = document.getElementById('user-table');
+  if (!t) return;
+  t.innerHTML = sampleUsers.map(u => `
+    <tr>
+      <td><div class="flex-gap"><div class="avatar">${u.name.split(' ').map(n=>n[0]).join('')}</div>${u.name}</div></td>
+      <td><code style="font-size:12px;background:#f0efe9;padding:2px 6px;border-radius:4px;">${u.token}</code></td>
+      <td>${u.time}</td>
+      <td><strong>${u.stamps}</strong>/8</td>
+      <td style="font-size:13px;">${u.profile}</td>
+      <td><span class="badge ${u.status==='active'?'badge-green':'badge-gray'}">${u.status==='active'?'Aktív':'Inaktív'}</span></td>
+      <td><button class="btn btn-outline btn-sm">Részletek</button></td>
+    </tr>`).join('');
+}
+
+// ACTIVITY LOG
+const activityData = [
+  { time:"11:42:07", dot:"#22c55e", msg:"Kovács Bence begyűjtötte a <strong>Kiberbiztonság</strong> pecsétet", sub:"Token: H9KL2M · IP: 10.0.0.45" },
+  { time:"11:41:53", dot:"#3b82f6", msg:"Új regisztráció: <strong>Papp Zsófia</strong>", sub:"Session: X7QR4NVL" },
+  { time:"11:41:22", dot:"#dc2626", msg:"⚠️ Visszautasított token beolvasás", sub:"Lejárt token · IP: 192.168.4.55" },
+  { time:"11:40:58", dot:"#22c55e", msg:"Nagy Eszter teljesítette a <strong>küldetést</strong>: Mérnökkel beszélgetés", sub:"" },
+  { time:"11:40:31", dot:"#22c55e", msg:"Tóth Márk begyűjtötte a <strong>Ipar 4.0</strong> pecsétet", sub:"Token: P3RT7K · IP: 10.0.0.67" },
+  { time:"11:39:44", dot:"#a855f7", msg:"Generált <strong>pályaprofil</strong>: Varga Luca → Mobilitás Innovátor 🚗", sub:"" },
+  { time:"11:38:12", dot:"#dc2626", msg:"⚠️ Rate limit aktiválva", sub:"IP: 10.0.0.128 · 12 kísérlet 60 mp alatt" },
+];
+
+function renderActivityLog() {
+  const c = document.getElementById('activity-log');
+  if (!c) return;
+  c.innerHTML = activityData.map(a => `
+    <div class="log-entry">
+      <span class="log-time">${a.time}</span>
+      <div class="log-dot" style="background:${a.dot}"></div>
+      <div class="log-msg"><div>${a.msg}</div>${a.sub?`<div class="log-sub">${a.sub}</div>`:''}</div>
+    </div>`).join('');
+}
+
+// SECURITY LOG
+const securityData = [
+  { time:"11:41:22", type:"warn", msg:"Lejárt token beolvasási kísérlet", sub:"IP: 192.168.4.55 · Zóna: Energia · Token: ZZ9KLM2" },
+  { time:"11:38:12", type:"danger", msg:"Rate limit: túl sok kérés", sub:"IP: 10.0.0.128 · 12 kísérlet 60 mp alatt · Automatikus blokk" },
+  { time:"11:22:05", type:"warn", msg:"Lejárt token beolvasási kísérlet", sub:"IP: 192.168.4.55 · Zóna: Ipar 4.0" },
+  { time:"10:58:44", type:"info", msg:"Admin bejelentkezés", sub:"Felhasználó: admin@mee.hu · IP: 10.0.0.1" },
+  { time:"10:15:33", type:"warn", msg:"Ismeretlen zóna kód", sub:"Beolvasott kód: TESZT123 · IP: 192.168.1.99" },
+  { time:"09:44:21", type:"info", msg:"Token újragenerálás (manuális)", sub:"Admin által: admin@mee.hu · Mind a 8 zóna" },
+  { time:"09:00:00", type:"info", msg:"Rendszer indítás", sub:"v1.0.0 · Fesztivál nap kezdete" },
+];
+
+function renderSecurityLog() {
+  const c = document.getElementById('security-log');
+  if (!c) return;
+  const colors = { warn:"#ca8a04", danger:"#dc2626", info:"#1a3a8a" };
+  c.innerHTML = securityData.map(a => `
+    <div class="log-entry">
+      <span class="log-time">${a.time}</span>
+      <div class="log-dot" style="background:${colors[a.type]}"></div>
+      <div class="log-msg"><div>${a.msg}</div><div class="log-sub">${a.sub}</div></div>
+    </div>`).join('');
+}
+
+// ZONE SETTINGS
+function renderZoneSettings() {
+  const c = document.getElementById('zone-settings');
+  if (!c) return;
+  c.innerHTML = zones.map(z => `
+    <div class="flex-between" style="padding:10px 0;border-bottom:1px solid #f0efe9;">
+      <span style="font-size:14px;">${z.emoji} ${z.name}</span>
+      <div class="flex-gap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" checked style="accent-color:var(--blue);width:16px;height:16px;"> Aktív
+        </label>
+      </div>
+    </div>`).join('');
+}
+
+// NAV
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = { 'p-dashboard':'Dashboard', 'p-live':'Élő nézet', 'p-qr':'QR Tokenek', 'p-stamps':'Pecsétstatisztika', 'p-users':'Regisztráltak', 'p-security':'Biztonsági napló', 'p-settings':'Beállítások' };
+  document.getElementById('page-title').textContent = titles[id] || '';
+  if (id === 'p-qr') renderTokenGrid();
+}
+
+// ROLE
+let selectedRole = 'admin';
+function setRole(role, btn) {
+  selectedRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function doLogin() {
+  currentRole = selectedRole;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-layout').style.display = 'block';
+  document.body.className = `role-${currentRole}`;
+  const labels = { admin:'🔑 Rendszergazda', animator:'🎪 Animátor · Energia zóna', exhibitor:'🏢 Kiállító · Olvasó' };
+  document.getElementById('sidebar-role-label').textContent = labels[currentRole];
+  if (currentRole === 'animator') {
+    showPage('p-qr', null);
+    document.querySelector('[onclick*="p-qr"]')?.classList.add('active');
+    document.querySelector('[onclick*="p-dashboard"]')?.classList.remove('active');
+  }
+  initAll();
+}
+
+function doLogout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-layout').style.display = 'none';
+}
+
+function initAll() {
+  initTokens();
+  renderZoneBars();
+  renderTimeline();
+  renderZoneCapacity();
+  renderStampTable();
+  renderUserTable();
+  renderActivityLog();
+  renderSecurityLog();
+  renderZoneSettings();
+  setInterval(tickTokens, 1000);
+  setInterval(updateLiveStats, 3000);
+  updateClock();
+  setInterval(updateClock, 1000);
+}
+
+function updateClock() {
+  const t = document.getElementById('topbar-time');
+  if (t) t.textContent = new Date().toLocaleTimeString('hu-HU');
+}
+
+function updateLiveStats() {
+  const u = document.getElementById('stat-users');
+  if (u) { let v = parseInt(u.textContent); if(Math.random()>0.6) u.textContent = v + Math.floor(Math.random()*3); }
+  const s = document.getElementById('stat-stamps');
+  if (s) { let v = parseInt(s.textContent.replace(/\s/g,'')); s.textContent = (v + Math.floor(Math.random()*5)).toLocaleString('hu-HU'); }
+  const spm = document.getElementById('scans-per-min');
+  if (spm) spm.textContent = Math.floor(Math.random()*20)+5;
+  const lsz = document.getElementById('last-stamp-zone');
+  const lsts = ['Energia','Ipar 4.0','Kiberbiztonság','Smart Mobilitás','Fény'];
+  if (lsz && Math.random()>0.5) { lsz.textContent = lsts[Math.floor(Math.random()*lsts.length)]; document.getElementById('last-stamp-time').textContent = 'Most'; }
+}
+
+// MODAL
+function showBlockModal(ip) {
+  blockTarget = ip;
+  document.getElementById('modal-ip').textContent = ip;
+  document.getElementById('block-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('block-modal').classList.remove('open'); }
+function confirmBlock() {
+  closeModal();
+  showToast(`⛔ ${blockTarget} blokkolva!`);
+  document.getElementById('suspicious-count').textContent = Math.max(0, parseInt(document.getElementById('suspicious-count').textContent)-1);
+}
+
+function exportCSV() {
+  const rows = [['Név','Token','Regisztrált','Pecsétek','Profil'],...sampleUsers.map(u=>[u.name,u.token,u.time,u.stamps,u.profile])];
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='miapálya_2026_export.csv'; a.click();
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;top:20px;right:20px;background:#1a3a8a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.2);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+</script>
+</body>
+</html>

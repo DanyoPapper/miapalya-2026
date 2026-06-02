@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mi a pálya? 2026 — Demo App</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mee-blue: #1a3a8a;
+    --mee-blue-light: #2a4fa8;
+    --mee-orange: #ff6b35;
+    --mee-yellow: #ffd700;
+    --mee-bg: #f5f4f0;
+    --mee-card: #ffffff;
+    --mee-text: #1a1a2e;
+    --mee-muted: #6b7280;
+    --mee-border: rgba(26,58,138,0.12);
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #e8e6e0; font-family: 'DM Sans', sans-serif; }
+
+  .app-wrapper {
+    max-width: 390px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--mee-bg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* SCREENS */
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100vh;
+    animation: fadeSlide 0.3s ease;
+  }
+  .screen.active { display: flex; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateX(18px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* SPLASH */
+  #s-splash {
+    background: var(--mee-blue);
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .splash-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 70% 30%, #2a5fd4 0%, transparent 60%),
+                radial-gradient(circle at 20% 80%, #ff6b35 0%, transparent 50%);
+    opacity: 0.35;
+  }
+  .splash-logo {
+    position: relative;
+    text-align: center;
+    padding: 0 32px;
+  }
+  .splash-logo .mee-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 40px; padding: 6px 16px; margin-bottom: 28px;
+  }
+  .splash-logo .mee-badge span { color: rgba(255,255,255,0.9); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .splash-logo h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 56px; font-weight: 800;
+    color: #fff; line-height: 1;
+    margin-bottom: 6px;
+  }
+  .splash-logo h1 span { color: var(--mee-yellow); }
+  .splash-logo .year { font-family: 'Syne', sans-serif; font-size: 28px; color: rgba(255,255,255,0.5); font-weight: 600; margin-bottom: 20px; }
+  .splash-logo p { color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.5; }
+  .splash-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  .chip { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 30px; padding: 6px 14px; color: rgba(255,255,255,0.85); font-size: 12px; }
+  .splash-btn {
+    margin-top: 40px; width: 100%;
+    background: #fff; color: var(--mee-blue);
+    border: none; border-radius: var(--radius); padding: 16px;
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s, opacity 0.15s;
+  }
+  .splash-btn:active { transform: scale(0.97); opacity: 0.9; }
+  .splash-footer { position: relative; margin-top: 16px; color: rgba(255,255,255,0.4); font-size: 12px; }
+
+  /* QUIZ */
+  #s-quiz { background: var(--mee-bg); padding: 0; }
+  .quiz-header {
+    background: var(--mee-blue);
+    padding: 52px 24px 28px;
+    position: relative;
+  }
+  .quiz-header .step-label { color: rgba(255,255,255,0.6); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .quiz-header h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: #fff; line-height: 1.3; }
+  .prog-track { background: rgba(255,255,255,0.15); border-radius: 4px; height: 4px; margin-top: 20px; }
+  .prog-fill { background: var(--mee-yellow); height: 4px; border-radius: 4px; transition: width 0.4s ease; }
+  .quiz-body { padding: 20px 20px 100px; flex: 1; }
+  .opt-btn {
+    width: 100%; background: var(--mee-card);
+    border: 1.5px solid var(--mee-border);
+    border-radius: var(--radius-sm); padding: 16px 18px;
+    text-align: left; cursor: pointer; margin-bottom: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--mee-text);
+    display: flex; align-items: center; gap: 12px;
+    transition: all 0.15s;
+  }
+  .opt-btn .opt-icon { font-size: 22px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--mee-bg); border-radius: 8px; flex-shrink: 0; }
+  .opt-btn:active { transform: scale(0.98); }
+  .opt-btn.selected { border-color: var(--mee-blue); background: #eef2ff; }
+  .opt-btn.selected .opt-icon { background: #dde4ff; }
+  .quiz-next-bar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 390px;
+    background: var(--mee-bg); border-top: 1px solid var(--mee-border);
+    padding: 14px 20px 28px;
+  }
+  .primary-btn {
+    width: 100%; background: var(--mee-blue); color: #fff;
+    border: none; border-radius: var(--radius); padding: 15px;
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .primary-btn:active { transform: scale(0.97); }
+  .primary-btn:disabled { background: #c5cde6; cursor: default; }
+
+  /* MAP SCREEN */
+  #s-map { background: var(--mee-bg); }
+  .top-header {
+    background: var(--mee-blue); padding: 52px 20px 20px;
+  }
+  .top-header h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #fff; }
+  .top-header p { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 3px; }
+  .recommended-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,215,0,0.18); border: 1px solid rgba(255,215,0,0.35); border-radius: 20px; padding: 4px 10px; margin-top: 10px; }
+  .recommended-tag span { color: var(--mee-yellow); font-size: 11px; font-weight: 500; }
+  .scroll-area { flex: 1; overflow-y: auto; padding: 16px 16px 90px; }
+
+  /* Zone cards */
+  .zone-card {
+    background: var(--mee-card); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 12px; border: 1px solid var(--mee-border);
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .zone-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+  .zone-card.e-energia::before { background: #22c55e; }
+  .zone-card.e-ipar::before { background: #3b82f6; }
+  .zone-card.e-kiber::before { background: #a855f7; }
+  .zone-card.e-jarmű::before { background: #f97316; }
+  .zone-card.e-fény::before { background: #eab308; }
+  .zone-card.e-smart::before { background: #06b6d4; }
+  .zone-card.e-3d::before { background: #ec4899; }
+  .zone-card.e-háló::before { background: #64748b; }
+  .zone-card:active { transform: scale(0.98); }
+  .zone-card.recommended { border-color: rgba(26,58,138,0.3); box-shadow: 0 2px 12px rgba(26,58,138,0.08); }
+  .zone-emoji { font-size: 28px; width: 48px; height: 48px; background: var(--mee-bg); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .zone-info { flex: 1; }
+  .zone-info h3 { font-size: 14px; font-weight: 500; color: var(--mee-text); }
+  .zone-info p { font-size: 12px; color: var(--mee-muted); margin-top: 2px; }
+  .zone-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .badge-rec { background: #eef2ff; color: var(--mee-blue); }
+  .badge-done { background: #dcfce7; color: #16a34a; }
+  .badge-far { color: var(--mee-muted); font-size: 12px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 390px;
+    background: rgba(245,244,240,0.95); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--mee-border);
+    display: flex; justify-content: space-around;
+    padding: 10px 0 20px;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 16px; border-radius: var(--radius-sm); }
+  .nav-item .nav-icon { font-size: 22px; }
+  .nav-item span { font-size: 10px; color: var(--mee-muted); }
+  .nav-item.active .nav-icon { filter: none; }
+  .nav-item.active span { color: var(--mee-blue); font-weight: 500; }
+
+  /* MISSIONS */
+  #s-missions { background: var(--mee-bg); }
+  .mission-item {
+    background: var(--mee-card); border-radius: var(--radius-sm);
+    padding: 14px 16px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid var(--mee-border);
+  }
+  .mission-icon { font-size: 22px; width: 40px; height: 40px; background: var(--mee-bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mission-text { flex: 1; }
+  .mission-text h4 { font-size: 14px; font-weight: 500; color: var(--mee-text); }
+  .mission-text p { font-size: 11px; color: var(--mee-muted); margin-top: 1px; }
+  .mission-status-done { background: #dcfce7; color: #16a34a; font-size: 11px; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+  .mission-status-todo { background: var(--mee-bg); color: var(--mee-muted); font-size: 11px; padding: 4px 10px; border-radius: 20px; white-space: nowrap; border: 1px solid var(--mee-border); }
+  .mission-status-active { background: #fef9c3; color: #854d0e; font-size: 11px; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+  .progress-summary {
+    background: var(--mee-blue); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .progress-circle { width: 54px; height: 54px; position: relative; flex-shrink: 0; }
+  .prog-ring { transform: rotate(-90deg); }
+  .prog-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 4; }
+  .prog-ring-fill { fill: none; stroke: var(--mee-yellow); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 138; stroke-dashoffset: 55; transition: stroke-dashoffset 1s ease; }
+  .prog-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; }
+  .prog-text h3 { color: #fff; font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .prog-text p { color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 2px; }
+
+  /* STAMPS */
+  #s-stamps { background: var(--mee-bg); }
+  .stamps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stamp-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .stamp-circle {
+    width: 60px; height: 60px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    border: 2px dashed #ccc;
+    background: var(--mee-card);
+    transition: all 0.3s;
+  }
+  .stamp-circle.collected { border: 2px solid var(--mee-blue); background: #eef2ff; }
+  .stamp-name { font-size: 10px; color: var(--mee-muted); text-align: center; }
+  .stamp-name.collected { color: var(--mee-blue); font-weight: 500; }
+
+  /* RESULT */
+  #s-result { background: var(--mee-bg); padding-bottom: 40px; }
+  .result-hero {
+    background: linear-gradient(135deg, #1a3a8a 0%, #2a5fd4 100%);
+    padding: 60px 24px 40px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .result-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255,107,53,0.3) 0%, transparent 50%);
+  }
+  .result-emoji { font-size: 72px; margin-bottom: 12px; position: relative; animation: bounce 0.6s ease; }
+  @keyframes bounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+  .result-hero h2 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: #fff; position: relative; }
+  .result-hero p { color: rgba(255,255,255,0.75); font-size: 14px; margin-top: 8px; position: relative; line-height: 1.5; }
+  .result-body { padding: 20px; }
+  .result-section { background: var(--mee-card); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; border: 1px solid var(--mee-border); }
+  .result-section h3 { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--mee-text); margin-bottom: 10px; }
+  .path-tag { display: inline-flex; align-items: center; gap: 6px; background: #eef2ff; border: 1px solid rgba(26,58,138,0.15); color: var(--mee-blue); font-size: 12px; border-radius: 20px; padding: 5px 12px; margin: 3px; cursor: pointer; transition: all 0.15s; }
+  .path-tag:active { background: #dde6ff; }
+  .stats-row { display: flex; gap: 10px; }
+  .stat-cell { flex: 1; background: var(--mee-bg); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+  .stat-cell .val { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--mee-blue); }
+  .stat-cell .lbl { font-size: 11px; color: var(--mee-muted); margin-top: 2px; }
+  .share-btn {
+    width: 100%; background: var(--mee-orange); color: #fff;
+    border: none; border-radius: var(--radius); padding: 15px;
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; margin-top: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .share-btn:active { transform: scale(0.97); }
+  .outline-btn {
+    width: 100%; background: transparent; color: var(--mee-blue);
+    border: 1.5px solid rgba(26,58,138,0.3); border-radius: var(--radius); padding: 14px;
+    font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 10px;
+  }
+
+  /* ZONE DETAIL */
+  #s-zone { background: var(--mee-bg); }
+  .zone-detail-header { padding: 52px 20px 24px; position: relative; }
+  .zone-detail-emoji { font-size: 52px; margin-bottom: 12px; }
+  .zone-detail-header h2 { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--mee-text); }
+  .zone-detail-header p { color: var(--mee-muted); font-size: 14px; margin-top: 6px; line-height: 1.5; }
+  .back-btn { position: absolute; top: 20px; left: 20px; width: 36px; height: 36px; background: var(--mee-card); border: 1px solid var(--mee-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+  .task-card {
+    background: var(--mee-card); border-radius: var(--radius-sm); padding: 14px 16px;
+    margin-bottom: 10px; border: 1px solid var(--mee-border);
+  }
+  .task-card h4 { font-size: 14px; font-weight: 500; color: var(--mee-text); margin-bottom: 4px; }
+  .task-card p { font-size: 12px; color: var(--mee-muted); line-height: 1.4; }
+  .qr-mock {
+    background: var(--mee-card); border-radius: var(--radius); border: 1px solid var(--mee-border);
+    padding: 20px; text-align: center; margin: 16px 0;
+  }
+  .qr-box { width: 120px; height: 120px; margin: 0 auto 12px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .qr-inner { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; padding: 8px; }
+  .qr-px { width: 100%; aspect-ratio: 1; background: #fff; border-radius: 1px; }
+  .qr-px.b { background: #000; }
+  .qr-box .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: rgba(0,255,100,0.8); animation: scanLine 1.5s ease-in-out infinite; }
+  @keyframes scanLine { 0% { top: 15%; } 100% { top: 85%; } }
+  .qr-mock p { font-size: 12px; color: var(--mee-muted); }
+  .stamp-collect-btn {
+    width: 100%; background: var(--mee-blue); color: #fff;
+    border: none; border-radius: var(--radius); padding: 15px;
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: #1a3a8a; color: #fff; padding: 12px 20px; border-radius: 30px;
+    font-size: 14px; font-weight: 500; z-index: 999; transition: transform 0.3s ease;
+    white-space: nowrap; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Section label */
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--mee-muted); margin-bottom: 10px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="app-wrapper" id="app">
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">✅ Pecsét begyűjtve!</div>
+
+  <!-- SPLASH -->
+  <div class="screen active" id="s-splash">
+    <div class="splash-bg"></div>
+    <div class="splash-logo" style="padding-top: 60px; padding-bottom: 60px;">
+      <div class="mee-badge">
+        <span>Magyar Elektrotechnikai Egyesület</span>
+      </div>
+      <h1>Mi a<br><span>pálya?</span></h1>
+      <div class="year">2026</div>
+      <p>Fedezd fel a műszaki világ lehetőségeit, gyűjts pecséteket, és találd meg a saját utadat!</p>
+      <div class="splash-chips">
+        <span class="chip">🗺 Kalandtérkép</span>
+        <span class="chip">📖 Pecsétfüzet</span>
+        <span class="chip">🏆 Pályaprofil</span>
+      </div>
+      <button class="splash-btn" onclick="goTo('s-quiz')">Kezdjük el →</button>
+      <p class="splash-footer">Műszaki Pályaválasztó Fesztivál · Budapest 2026</p>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="s-quiz">
+    <div class="quiz-header">
+      <p class="step-label" id="q-step">1. kérdés / 4</p>
+      <h2 id="q-text">Mi vonz legjobban a műszaki pályák közül?</h2>
+      <div class="prog-track"><div class="prog-fill" id="q-prog" style="width:25%"></div></div>
+    </div>
+    <div class="quiz-body" id="q-options"></div>
+    <div class="quiz-next-bar">
+      <button class="primary-btn" id="q-btn" onclick="nextQ()" disabled>Tovább →</button>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="screen" id="s-map">
+    <div class="top-header">
+      <h2>Kalandtérkép</h2>
+      <p>A te ajánlott útvonalad ma</p>
+      <div class="recommended-tag">
+        <span>⭐ Neked: <span id="map-rec-text">Energia → Ipar 4.0 → Kiberbiztonság</span></span>
+      </div>
+    </div>
+    <div class="scroll-area" id="map-zones"></div>
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="navTo('s-map', 0)"><div class="nav-icon">🗺</div><span>Térkép</span></div>
+      <div class="nav-item" onclick="navTo('s-missions', 1)"><div class="nav-icon">✅</div><span>Küldetések</span></div>
+      <div class="nav-item" onclick="navTo('s-stamps', 2)"><div class="nav-icon">📖</div><span>Pecsétfüzet</span></div>
+      <div class="nav-item" onclick="navTo('s-result', 3)"><div class="nav-icon">🏆</div><span>Profil</span></div>
+    </div>
+  </div>
+
+  <!-- ZONE DETAIL -->
+  <div class="screen" id="s-zone">
+    <div class="scroll-area" style="padding-top: 0;">
+      <div class="zone-detail-header" id="zone-detail-header">
+        <div class="back-btn" onclick="goTo('s-map')">‹</div>
+        <div class="zone-detail-emoji" id="zd-emoji">⚡</div>
+        <h2 id="zd-name">Zöld Energia</h2>
+        <p id="zd-desc">Megújuló energiaforrások, napelem-rendszerek, villamosenergia-hálózatok és fenntartható technológiák.</p>
+      </div>
+      <div style="padding: 0 16px 100px;">
+        <p class="section-label">Feladatok ezen a standon</p>
+        <div class="task-card"><h4>⚡ Energiakvíz</h4><p>3 kérdés a megújuló energiáról — ha mindháromra helyesen válaszolsz, pecsétet kapsz!</p></div>
+        <div class="task-card"><h4>🔬 Napelemkísérlet</h4><p>Mérd meg, mekkora feszültséget termel a napelem különböző fényviszonyok között.</p></div>
+        <div class="task-card"><h4>💬 Kérdezz egy mérnöktől!</h4><p>Legalább egy kérdést tegyél fel az itt álló szakembernek. Az animátor segít, ha nem tudsz mit kérdezni.</p></div>
+        <div class="qr-mock">
+          <p style="font-size: 13px; font-weight: 500; color: var(--mee-text); margin-bottom: 12px;">Pecsét begyűjtése QR-kóddal</p>
+          <div class="qr-box">
+            <div class="scan-line"></div>
+            <svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+              <rect fill="#fff" x="5" y="5" width="35" height="35" rx="4"/>
+              <rect fill="#fff" x="60" y="5" width="35" height="35" rx="4"/>
+              <rect fill="#fff" x="5" y="60" width="35" height="35" rx="4"/>
+              <rect fill="#000" x="12" y="12" width="21" height="21" rx="2"/>
+              <rect fill="#000" x="67" y="12" width="21" height="21" rx="2"/>
+              <rect fill="#000" x="12" y="67" width="21" height="21" rx="2"/>
+              <rect fill="#fff" x="16" y="16" width="13" height="13"/>
+              <rect fill="#fff" x="71" y="16" width="13" height="13"/>
+              <rect fill="#fff" x="16" y="71" width="13" height="13"/>
+              <rect fill="#000" x="20" y="20" width="5" height="5"/>
+              <rect fill="#000" x="75" y="20" width="5" height="5"/>
+              <rect fill="#000" x="20" y="75" width="5" height="5"/>
+              <rect fill="#000" x="46" y="5" width="7" height="7"/>
+              <rect fill="#000" x="55" y="12" width="5" height="5"/>
+              <rect fill="#000" x="46" y="19" width="5" height="7"/>
+              <rect fill="#000" x="60" y="46" width="7" height="5"/>
+              <rect fill="#000" x="73" y="46" width="7" height="5"/>
+              <rect fill="#000" x="60" y="53" width="5" height="7"/>
+              <rect fill="#000" x="80" y="53" width="15" height="5"/>
+              <rect fill="#000" x="46" y="46" width="5" height="5"/>
+              <rect fill="#000" x="46" y="55" width="5" height="5"/>
+              <rect fill="#000" x="5" y="46" width="5" height="5"/>
+              <rect fill="#000" x="14" y="46" width="5" height="5"/>
+              <rect fill="#000" x="24" y="46" width="16" height="5"/>
+              <rect fill="#000" x="5" y="55" width="7" height="5"/>
+              <rect fill="#000" x="16" y="55" width="5" height="5"/>
+              <rect fill="#000" x="26" y="55" width="14" height="5"/>
+              <rect fill="#000" x="5" y="64" width="7" height="5"/>
+              <rect fill="#000" x="35" y="64" width="5" height="5"/>
+              <rect fill="#000" x="67" y="64" width="5" height="21"/>
+              <rect fill="#000" x="74" y="64" width="21" height="5"/>
+              <rect fill="#000" x="80" y="70" width="5" height="10"/>
+              <rect fill="#000" x="88" y="75" width="7" height="5"/>
+              <rect fill="#000" x="74" y="80" width="14" height="5"/>
+              <rect fill="#000" x="88" y="88" width="7" height="7"/>
+              <rect fill="#000" x="46" y="64" width="7" height="7"/>
+              <rect fill="#000" x="55" y="73" width="5" height="7"/>
+              <rect fill="#000" x="46" y="73" width="7" height="7"/>
+              <rect fill="#000" x="46" y="84" width="5" height="5"/>
+              <rect fill="#000" x="55" y="84" width="14" height="5"/>
+              <rect fill="#000" x="46" y="91" width="7" height="9"/>
+            </svg>
+          </div>
+          <p>A stand animátorától kérd a kódot,<br>miután elvégezted a feladatokat</p>
+        </div>
+        <button class="stamp-collect-btn" id="collect-btn" onclick="collectStamp()">📖 Pecsét begyűjtése (demo)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSIONS -->
+  <div class="screen" id="s-missions">
+    <div class="top-header">
+      <h2>Küldetések</h2>
+      <p>Teljesítsd a feladatokat és gyűjts pecséteket!</p>
+    </div>
+    <div class="scroll-area">
+      <div class="progress-summary">
+        <div class="progress-circle">
+          <svg width="54" height="54" class="prog-ring">
+            <circle class="prog-ring-bg" cx="27" cy="27" r="22"/>
+            <circle class="prog-ring-fill" id="ring-fill" cx="27" cy="27" r="22"/>
+          </svg>
+          <div class="prog-label" id="ring-label">3/5</div>
+        </div>
+        <div class="prog-text">
+          <h3>Jó haladás! 🎉</h3>
+          <p>3 küldetést teljesítettél,<br>még 2 van hátra</p>
+        </div>
+      </div>
+      <div id="mission-list"></div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="navTo('s-map', 0)"><div class="nav-icon">🗺</div><span>Térkép</span></div>
+      <div class="nav-item active" onclick="navTo('s-missions', 1)"><div class="nav-icon">✅</div><span>Küldetések</span></div>
+      <div class="nav-item" onclick="navTo('s-stamps', 2)"><div class="nav-icon">📖</div><span>Pecsétfüzet</span></div>
+      <div class="nav-item" onclick="navTo('s-result', 3)"><div class="nav-icon">🏆</div><span>Profil</span></div>
+    </div>
+  </div>
+
+  <!-- STAMPS -->
+  <div class="screen" id="s-stamps">
+    <div class="top-header">
+      <h2>Pecsétfüzet</h2>
+      <p id="stamp-counter">3 / 8 pecséted van</p>
+    </div>
+    <div class="scroll-area">
+      <div class="stamps-grid" id="stamp-grid"></div>
+      <div style="background: var(--mee-card); border-radius: var(--radius); padding: 16px; border: 1px solid var(--mee-border); text-align: center;">
+        <p style="font-size: 13px; color: var(--mee-muted); line-height: 1.5;">Gyűjtsd össze mind a <strong>8 pecsétet</strong> a teljes pályaprofilhoz! Az összes pecséttel különleges ajándékot kapsz a kijáratnál. 🎁</p>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="navTo('s-map', 0)"><div class="nav-icon">🗺</div><span>Térkép</span></div>
+      <div class="nav-item" onclick="navTo('s-missions', 1)"><div class="nav-icon">✅</div><span>Küldetések</span></div>
+      <div class="nav-item active" onclick="navTo('s-stamps', 2)"><div class="nav-icon">📖</div><span>Pecsétfüzet</span></div>
+      <div class="nav-item" onclick="navTo('s-result', 3)"><div class="nav-icon">🏆</div><span>Profil</span></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen" id="s-result">
+    <div class="result-hero">
+      <div class="result-emoji" id="res-emoji">⚡</div>
+      <h2 id="res-title">Zöld Energia Innovátor</h2>
+      <p id="res-desc">Érdeklődsz a fenntartható technológiák, megújuló energia és klímatechnika iránt — ez egy igazán jövőbe mutató irány!</p>
+    </div>
+    <div class="result-body">
+      <div class="stats-row" style="margin-bottom: 12px;">
+        <div class="stat-cell"><div class="val" id="res-stamps">3</div><div class="lbl">pecsét</div></div>
+        <div class="stat-cell"><div class="val">3</div><div class="lbl">küldetés</div></div>
+        <div class="stat-cell"><div class="val">2</div><div class="lbl">mérnök</div></div>
+      </div>
+      <div class="result-section">
+        <h3>🎓 Továbblépési utak neked</h3>
+        <div id="res-paths"></div>
+      </div>
+      <div class="result-section">
+        <h3>🏫 Ajánlott intézmények</h3>
+        <div id="res-unis"></div>
+      </div>
+      <button class="share-btn" onclick="shareResult()">📤 Megoszdom az eredményem</button>
+      <button class="outline-btn" onclick="navTo('s-map', 0)">← Vissza a fesztiválra</button>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="navTo('s-map', 0)"><div class="nav-icon">🗺</div><span>Térkép</span></div>
+      <div class="nav-item" onclick="navTo('s-missions', 1)"><div class="nav-icon">✅</div><span>Küldetések</span></div>
+      <div class="nav-item" onclick="navTo('s-stamps', 2)"><div class="nav-icon">📖</div><span>Pecsétfüzet</span></div>
+      <div class="nav-item active" onclick="navTo('s-result', 3)"><div class="nav-icon">🏆</div><span>Profil</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ——— DATA ———
+const questions = [
+  {
+    text: "Mi vonz legjobban a műszaki pályák közül?",
+    opts: [
+      { icon: "🌱", label: "Megújuló energia és klímatechnika", val: "energia" },
+      { icon: "🤖", label: "Robotok és automatizálás", val: "ipar" },
+      { icon: "🚗", label: "Autók és jövő mobilitása", val: "jarmű" },
+      { icon: "💻", label: "Számítógépek és hálózatok", val: "kiber" }
+    ]
+  },
+  {
+    text: "Milyen típusú munkát képzelsz el?",
+    opts: [
+      { icon: "🔧", label: "Terepi, fizikai mérnöki munka", val: "energia" },
+      { icon: "🖥", label: "Szoftver és programozás", val: "kiber" },
+      { icon: "📐", label: "Tervezés és konstrukció", val: "ipar" },
+      { icon: "🔬", label: "Kutatás és labormunka", val: "fény" }
+    ]
+  },
+  {
+    text: "Mi motivál legjobban a munkában?",
+    opts: [
+      { icon: "🌍", label: "A bolygó és klíma megmentése", val: "energia" },
+      { icon: "⚙", label: "Szuper dolgok megépítése", val: "ipar" },
+      { icon: "🔐", label: "Biztonság megteremtése", val: "kiber" },
+      { icon: "🏠", label: "Okosabb otthonok és városok", val: "smart" }
+    ]
+  },
+  {
+    text: "Melyik tantárgy a kedvenced?",
+    opts: [
+      { icon: "⚗", label: "Fizika és kémia", val: "energia" },
+      { icon: "💡", label: "Matematika és logika", val: "kiber" },
+      { icon: "🎨", label: "Rajz és műszaki rajz", val: "3d" },
+      { icon: "📡", label: "Informatika és hálózatok", val: "háló" }
+    ]
+  }
+];
+
+const zones = [
+  { id: "energia", name: "Zöld Energia & Fenntartható Tech", emoji: "⚡", color: "e-energia", loc: "A-csarnok, 3. sor", desc: "Megújuló energiaforrások, napelem-rendszerek, villamosenergia-hálózatok és fenntartható technológiák.", paths: ["Villamosmérnök-képzés","Energetikai technikus","Környezettechnika","Napenergiai specialista"], unis: ["BME Villamosmérnöki Kar","ELTE TTK Fizika","Pannon Egyetem Mérnöki Kar"] },
+  { id: "ipar", name: "Ipar 4.0 & Automatizálás", emoji: "🤖", color: "e-ipar", loc: "B-csarnok, 1. sor", desc: "Robotok, PLC-programozás, gyártásautomatizálás, digitális ikrek és okos gyárak.", paths: ["Mechatronikai mérnök","Automatizálási technikus","Robotprogramozó","Gépészmérnök"], unis: ["BME Gépészmérnöki Kar","Győri SZFE","Miskolci Egyetem"] },
+  { id: "kiber", name: "Kiberbiztonság & IT Biztonság", emoji: "🔐", color: "e-kiber", loc: "B-csarnok, 4. sor", desc: "Etikus hacking, hálózatvédelem, kriptográfia és digitális biztonság — az internet védelme.", paths: ["Kiberbiztonsági mérnök","Etikus hacker","IT biztonsági auditor","Hálózati szakember"], unis: ["BME Infomatikai Kar","NKE Kiberbiztonsági Tanszék","ELTE IK"] },
+  { id: "jarmű", name: "Smart Mobilitás & Járműipar", emoji: "🚗", color: "e-jarmű", loc: "A-csarnok, 1. sor", desc: "Elektromos járművek, önvezető autók, intelligens közlekedési rendszerek és járműelektronika.", paths: ["Járműmérnök","Önvezető rendszerek fejlesztő","Elektromobilitás specialista","Közlekedésmérnök"], unis: ["SZE Járműmérnöki Kar","BME KJK","Debreceni Egyetem"] },
+  { id: "fény", name: "Fény és Világítástechnika", emoji: "💡", color: "e-fény", loc: "C-csarnok, 2. sor", desc: "LED-technológia, okos fényrendszerek, optika, lézerek és jövő világítástechnikája.", paths: ["Világítástechnikai mérnök","Optikai mérnök","Smart lighting specialista","Fénytervező"], unis: ["BME VIK Fénytechnika","MOME Tárgyak és Terek","Óbudai Egyetem"] },
+  { id: "smart", name: "Okos Otthonok & IoT", emoji: "🏠", color: "e-smart", loc: "C-csarnok, 5. sor", desc: "Okosotthon-rendszerek, IoT-szenzorok, beágyazott rendszerek és összekapcsolt eszközök.", paths: ["IoT-fejlesztő","Beágyazott rendszerek mérnöke","Okosváros tervező","Domotika specialista"], unis: ["Óbudai Egyetem NIK","BME VIK","Szegedi TTIK"] },
+  { id: "3d", name: "Additív Gyártás & 3D Világ", emoji: "🖨", color: "e-3d", loc: "D-csarnok, 1. sor", desc: "3D nyomtatás, szkenning, CAD-tervezés és forradalmi gyártástechnológiák.", paths: ["3D tervező mérnök","Additív gyártási specialista","Prototípuskészítő","CAD/CAM mérnök"], unis: ["BME GPK","Pannon Egyetem MIK","Széchenyi István Egyetem"] },
+  { id: "háló", name: "Hálózati Tech & Telekommunikáció", emoji: "📡", color: "e-háló", loc: "D-csarnok, 3. sor", desc: "5G hálózatok, mobilkommunikáció, optikai hálózatok és a jövő internetinfrastruktúrája.", paths: ["Telekommunikációs mérnök","Hálózati specialista","5G-fejlesztő","Infra-tervező"], unis: ["BME HIT","Óbudai Egyetem NIK","ELTE IK"] }
+];
+
+const missions = [
+  { icon: "⚡", name: "Energia-kvíz teljesítve", zone: "Zöld Energia stand", status: "done" },
+  { icon: "🤖", name: "Robot-programozás kipróbálva", zone: "Ipar 4.0 stand", status: "done" },
+  { icon: "💬", name: "Mérnökkel beszélgettem", zone: "Bármelyik stand", status: "done" },
+  { icon: "🔐", name: "Hacker-kihívás teljesítve", zone: "Kiberbiztonság zóna", status: "active" },
+  { icon: "🎓", name: "Kampusz-túra QR beolvasva", zone: "Felsőoktatás sarok", status: "todo" }
+];
+
+const profiles = {
+  energia: { emoji: "⚡", title: "Zöld Energia Innovátor", desc: "Érdeklődsz a fenntartható technológiák, megújuló energia és klímatechnika iránt — ez egy igazán jövőbe mutató irány!" },
+  ipar: { emoji: "🤖", title: "Ipar 4.0 Mérnök", desc: "A robotika, automatizálás és okos gyárak világa vár rád — te vagy a jövő gyárainak építője!" },
+  kiber: { emoji: "🔐", title: "Kiberbiztonsági Specialista", desc: "A digitális világ védelme a kezedben van — etikus hacker, hálózatvédő, az internet őre." },
+  jarmű: { emoji: "🚗", title: "Mobilitás Innovátor", desc: "Az elektromos és önvezető járművek forradalma a te területed — a jövő közlekedése vár!" },
+  fény: { emoji: "💡", title: "Fénytechnika Szakértő", desc: "Az optika, LED és okos fényrendszerek mágusa — te teszel mindent láthatóvá!" },
+  smart: { emoji: "🏠", title: "IoT & Okosváros Tervező", desc: "Az összekapcsolt, intelligens világ építője — otthonok, városok, mindent okossá teszel." },
+  "3d": { emoji: "🖨", title: "3D Világ Alkotó", desc: "A tervezés és gyártás jövője — bármit meg tudsz alkotni, amit elképzelsz!" },
+  háló: { emoji: "📡", title: "Hálózati Tech Guru", desc: "5G, optikai hálózatok, a digitális infrastruktúra gerince — te tartod össze az internetet." }
+};
+
+// ——— STATE ———
+let state = {
+  currentQ: 0,
+  answers: [],
+  selected: null,
+  collectedStamps: ["energia", "ipar", "fény"],
+  profile: "energia"
+};
+
+// ——— INIT ———
+function init() {
+  renderQuestion();
+  renderZones();
+  renderMissions();
+  renderStamps();
+  renderResult();
+}
+
+// ——— QUIZ ———
+function renderQuestion() {
+  const q = questions[state.currentQ];
+  document.getElementById('q-step').textContent = `${state.currentQ + 1}. kérdés / ${questions.length}`;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('q-prog').style.width = `${((state.currentQ + 1) / questions.length) * 100}%`;
+  const container = document.getElementById('q-options');
+  container.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-icon">${opt.icon}</span><span>${opt.label}</span>`;
+    btn.onclick = () => {
+      document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.selected = opt.val;
+      document.getElementById('q-btn').disabled = false;
+    };
+    container.appendChild(btn);
+  });
+  document.getElementById('q-btn').disabled = true;
+  state.selected = null;
+}
+
+function nextQ() {
+  if (!state.selected) return;
+  state.answers.push(state.selected);
+  if (state.currentQ < questions.length - 1) {
+    state.currentQ++;
+    renderQuestion();
+  } else {
+    // compute profile
+    const counts = {};
+    state.answers.forEach(a => counts[a] = (counts[a] || 0) + 1);
+    state.profile = Object.keys(counts).sort((a,b) => counts[b]-counts[a])[0] || 'energia';
+    // set recommended
+    const recs = [state.profile];
+    const others = zones.filter(z => z.id !== state.profile).slice(0,2).map(z=>z.id);
+    const allRec = [...recs, ...others];
+    document.getElementById('map-rec-text').textContent = allRec.map(id => zones.find(z=>z.id===id)?.name.split(' ')[0]).join(' → ');
+    renderResult();
+    goTo('s-map');
+  }
+}
+
+// ——— ZONES ———
+function renderZones() {
+  const container = document.getElementById('map-zones');
+  container.innerHTML = '';
+  zones.forEach(zone => {
+    const done = state.collectedStamps.includes(zone.id);
+    const isRec = zone.id === state.profile;
+    const div = document.createElement('div');
+    div.className = `zone-card ${zone.color}${isRec ? ' recommended' : ''}`;
+    div.innerHTML = `
+      <div class="zone-emoji">${zone.emoji}</div>
+      <div class="zone-info">
+        <h3>${zone.name}</h3>
+        <p>${zone.loc}</p>
+      </div>
+      ${done ? '<span class="zone-badge badge-done">✓ Pecsét</span>' : isRec ? '<span class="zone-badge badge-rec">⭐ Ajánlott</span>' : '<span class="badge-far">→</span>'}
+    `;
+    div.onclick = () => openZone(zone.id);
+    container.appendChild(div);
+  });
+}
+
+let currentZoneId = null;
+function openZone(id) {
+  const zone = zones.find(z => z.id === id);
+  if (!zone) return;
+  currentZoneId = id;
+  document.getElementById('zd-emoji').textContent = zone.emoji;
+  document.getElementById('zd-name').textContent = zone.name;
+  document.getElementById('zd-desc').textContent = zone.desc;
+  const done = state.collectedStamps.includes(id);
+  const btn = document.getElementById('collect-btn');
+  if (done) {
+    btn.textContent = '✅ Pecsét már begyűjtve!';
+    btn.style.background = '#16a34a';
+    btn.onclick = null;
+  } else {
+    btn.textContent = '📖 Pecsét begyűjtése (demo)';
+    btn.style.background = 'var(--mee-blue)';
+    btn.onclick = collectStamp;
+  }
+  goTo('s-zone');
+}
+
+function collectStamp() {
+  if (!currentZoneId || state.collectedStamps.includes(currentZoneId)) return;
+  state.collectedStamps.push(currentZoneId);
+  renderZones();
+  renderStamps();
+  renderResult();
+  const btn = document.getElementById('collect-btn');
+  btn.textContent = '✅ Pecsét begyűjtve!';
+  btn.style.background = '#16a34a';
+  btn.onclick = null;
+  showToast(`${zones.find(z=>z.id===currentZoneId)?.emoji} Pecsét begyűjtve!`);
+  document.getElementById('res-stamps').textContent = state.collectedStamps.length;
+  document.getElementById('stamp-counter').textContent = `${state.collectedStamps.length} / 8 pecséted van`;
+}
+
+// ——— MISSIONS ———
+function renderMissions() {
+  const list = document.getElementById('mission-list');
+  list.innerHTML = '';
+  missions.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'mission-item';
+    const statusEl = m.status === 'done'
+      ? '<span class="mission-status-done">✓ Kész</span>'
+      : m.status === 'active'
+      ? '<span class="mission-status-active">Folyamatban</span>'
+      : '<span class="mission-status-todo">Még nem</span>';
+    div.innerHTML = `
+      <div class="mission-icon">${m.icon}</div>
+      <div class="mission-text"><h4>${m.name}</h4><p>${m.zone}</p></div>
+      ${statusEl}
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ——— STAMPS ———
+function renderStamps() {
+  const grid = document.getElementById('stamp-grid');
+  grid.innerHTML = '';
+  zones.forEach(zone => {
+    const done = state.collectedStamps.includes(zone.id);
+    const cell = document.createElement('div');
+    cell.className = 'stamp-cell';
+    cell.innerHTML = `
+      <div class="stamp-circle${done ? ' collected' : ''}">${zone.emoji}</div>
+      <span class="stamp-name${done ? ' collected' : ''}">${zone.name.split(' ')[0]}</span>
+    `;
+    cell.onclick = () => openZone(zone.id);
+    grid.appendChild(cell);
+  });
+  document.getElementById('stamp-counter').textContent = `${state.collectedStamps.length} / 8 pecséted van`;
+}
+
+// ——— RESULT ———
+function renderResult() {
+  const p = profiles[state.profile] || profiles.energia;
+  document.getElementById('res-emoji').textContent = p.emoji;
+  document.getElementById('res-title').textContent = p.title;
+  document.getElementById('res-desc').textContent = p.desc;
+  document.getElementById('res-stamps').textContent = state.collectedStamps.length;
+  const zone = zones.find(z => z.id === state.profile) || zones[0];
+  const paths = document.getElementById('res-paths');
+  paths.innerHTML = zone.paths.map(pt => `<span class="path-tag">${pt}</span>`).join('');
+  const unis = document.getElementById('res-unis');
+  unis.innerHTML = zone.unis.map(u => `<div style="padding:6px 0; border-bottom:1px solid var(--mee-border); font-size:13px; color:var(--mee-text);">🏫 ${u}</div>`).join('').replace(/border-bottom[^;]+;(?=[^<]*<\/div>\s*$)/,'border:none;');
+}
+
+// ——— NAV ———
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+function navTo(screenId, idx) {
+  goTo(screenId);
+  document.querySelectorAll('.bottom-nav').forEach(nav => {
+    nav.querySelectorAll('.nav-item').forEach((item, i) => {
+      item.classList.toggle('active', i === idx);
+    });
+  });
+}
+
+// ——— TOAST ———
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ——— SHARE ———
+function shareResult() {
+  const p = profiles[state.profile] || profiles.energia;
+  const text = `Mi a pálya? 2026 fesztiválon kiderült: én egy ${p.title} vagyok! ${p.emoji} Gyűjtöttem ${state.collectedStamps.length}/8 pecsétet. Te mi lennél? #MiAPálya2026 #MEE`;
+  if (navigator.share) {
+    navigator.share({ title: 'Mi a pálya? 2026 — Pályaprofilom', text });
+  } else {
+    navigator.clipboard?.writeText(text).then(() => showToast('📋 Szöveg másolva!'));
+    alert(`📤 Megosztható szöveg:\n\n${text}`);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

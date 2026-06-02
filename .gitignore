@@ -1,0 +1,20 @@
+# Függőségek
+node_modules/
+backend/node_modules/
+
+# Környezeti változók — SOHA ne commitold!
+.env
+.env.local
+.env.production
+
+# Naplók
+*.log
+logs/
+
+# Build
+dist/
+build/
+
+# Rendszer
+.DS_Store
+Thumbs.db
