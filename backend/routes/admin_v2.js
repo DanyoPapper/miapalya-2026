@@ -220,7 +220,7 @@ router.get('/exhibitor/stats', async (req, res) => {
 });
 
 // ── Felhasználókezelés (admin hozza létre az animátor/kiállító fiókokat) ─────
-router.get('/admin-users', async (_req, res) => {
+router.get('/admin-users', async (req, res) => {
   if (req.admin.role !== 'admin') return res.status(403).json({ error:'FORBIDDEN' });
   try {
     const { rows } = await db.query(
