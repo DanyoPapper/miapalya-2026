@@ -5,16 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mi a pálya? 2026 — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- QR code generator for displaying QR codes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{--blue:#1a3a8a;--blue2:#2a50b8;--bl:#eef2ff;--orange:#ff6b35;--green:#16a34a;--gl:#dcfce7;--red:#dc2626;--rl:#fee2e2;--yellow:#ca8a04;--yl:#fef9c3;--bg:#f8f8f6;--card:#fff;--text:#111827;--muted:#6b7280;--border:#e2e1db;--r:12px;--rs:8px;--sw:230px;--hh:56px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
+/* MOBILE DETECTION */
+body.mobile-view .desktop-only{display:none!important}
+body.mobile-view .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
+body.mobile-view .sb-logo{flex:1}
+body.mobile-view .sb-nav{width:100%;display:flex;flex-wrap:wrap;padding:4px}
+body.mobile-view .nl{padding:8px 10px;font-size:12px;border-left:none;border-radius:6px;flex-shrink:0}
+body.mobile-view .ns{display:none}
+body.mobile-view .main{margin-left:0}
+body.mobile-view .topbar{position:relative}
+body.mobile-view .sgrid{grid-template-columns:repeat(2,1fr)}
+body.mobile-view .two{grid-template-columns:1fr}
+body.mobile-view .three{grid-template-columns:1fr 1fr}
+body.mobile-view .form-row{grid-template-columns:1fr}
+body.mobile-view table{font-size:12px}
+body.mobile-view td,body.mobile-view th{padding:8px 10px}
+
+/* VIEW TOGGLE */
+.view-toggle-wrap{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;padding:0 16px}
+.view-toggle{display:flex;background:rgba(255,255,255,.1);border-radius:30px;padding:3px;gap:2px}
+.vt-btn{padding:5px 12px;border-radius:20px;border:none;background:transparent;color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.vt-btn.active{background:rgba(255,255,255,.2);color:#fff;font-weight:500}
+
 /* LOGIN */
 #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--blue);position:relative;overflow:hidden}
-#login-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,107,53,.25) 0%,transparent 55%)}
+#login-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,107,53,.25),transparent 55%)}
 .lc{background:#fff;border-radius:20px;padding:38px 34px;width:100%;max-width:380px;position:relative;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-.lc-logo{text-align:center;margin-bottom:26px}
+.lc-logo{text-align:center;margin-bottom:24px}
 .lc-badge{display:inline-block;background:var(--bl);color:var(--blue);font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;letter-spacing:.5px;margin-bottom:8px}
 .lc-logo h1{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--blue)}
 .lc-logo p{color:var(--muted);font-size:13px;margin-top:4px}
@@ -22,8 +46,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .fg label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:5px}
 .fg input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
 .fg input:focus{border-color:var(--blue)}
-.login-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--rs);padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s;position:relative}
-.login-btn:hover{opacity:.9}
+.login-view-toggle{display:flex;gap:8px;margin-bottom:16px}
+.lvt-btn{flex:1;padding:8px;border:1.5px solid var(--border);border-radius:var(--rs);background:#fff;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;text-align:center;transition:all .15s}
+.lvt-btn.active{border-color:var(--blue);background:var(--bl);color:var(--blue);font-weight:500}
+.login-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--rs);padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .login-btn:disabled{opacity:.6;cursor:default}
 .login-err{color:var(--red);font-size:13px;text-align:center;margin-top:10px;display:none}
 
@@ -42,33 +68,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nl:hover{background:rgba(255,255,255,.07);color:#fff}
 .nl.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:#ffd700}
 .nl .ni{font-size:15px;width:18px;text-align:center}
-.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.1)}
-.logout{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:var(--rs);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.sb-foot{padding:12px 16px 50px;border-top:1px solid rgba(255,255,255,.1)}
+.logout{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:var(--rs);padding:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px}
 
 /* MAIN */
 .main{margin-left:var(--sw);min-height:100vh}
 .topbar{height:var(--hh);background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
 .topbar h1{font-family:'Syne',sans-serif;font-size:17px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:10px}
 .live-badge{font-size:12px;font-weight:500;padding:5px 11px;border-radius:20px;display:flex;align-items:center;gap:5px}
 .live-badge.active{background:var(--gl);color:var(--green)}
 .live-badge.inactive{background:var(--rl);color:var(--red)}
 .live-badge.active::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.refresh-btn{background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:var(--rs);padding:6px 12px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.refresh-btn:hover{background:#fff;color:var(--text)}
 
 /* PAGES */
 .page{display:none;padding:22px 24px 40px}
 .page.active{display:block}
-
-/* STAT GRID */
 .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
 .sc{background:#fff;border-radius:var(--r);padding:16px 18px;border:1px solid var(--border)}
 .sc .lbl{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:7px}
-.sc .val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--text)}
+.sc .val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800}
 .sc .sub{font-size:12px;color:var(--muted);margin-top:4px}
-
-/* CARDS */
 .card{background:#fff;border-radius:var(--r);border:1px solid var(--border);margin-bottom:18px;overflow:hidden}
-.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ch h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
 .cb{padding:18px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -76,18 +101,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* TOGGLE */
 .toggle-row{display:flex;align-items:center;gap:14px;padding:14px 18px}
-.toggle-row .tr-info{flex:1}
-.toggle-row .tr-info h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
-.toggle-row .tr-info p{font-size:13px;color:var(--muted);margin-top:3px}
+.tr-info{flex:1}
+.tr-info h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.tr-info p{font-size:12px;color:var(--muted);margin-top:3px}
 .toggle{position:relative;width:52px;height:28px;flex-shrink:0}
-.toggle input{opacity:0;width:0;height:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
 .toggle-sl{position:absolute;cursor:pointer;inset:0;background:#ccc;transition:.3s;border-radius:28px}
 .toggle-sl:before{position:absolute;content:'';height:22px;width:22px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
 input:checked+.toggle-sl{background:var(--green)}
 input:checked+.toggle-sl:before{transform:translateX(24px)}
 
 /* FORMS */
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .fg2{margin-bottom:14px}
 .fg2 label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .fg2 input,.fg2 textarea,.fg2 select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;background:#fff}
@@ -100,7 +125,9 @@ input:checked+.toggle-sl:before{transform:translateX(24px)}
 .btn-d{background:var(--rl);color:var(--red)}
 .btn-o{background:#fff;color:var(--muted);border:1px solid var(--border)}.btn-o:hover{background:var(--bg)}
 .btn-g{background:var(--gl);color:var(--green)}
+.btn-y{background:var(--yl);color:var(--yellow)}
 .btn-sm{padding:5px 9px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
 
 /* TABLE */
 table{width:100%;border-collapse:collapse}
@@ -119,45 +146,52 @@ tr:hover td{background:var(--bg)}
 .alert-i{background:var(--bl);color:#1e3a8a;border:1px solid #bfdbfe}
 .alert-g{background:var(--gl);color:#14532d;border:1px solid #bbf7d0}
 
-/* FEST STATUS */
+/* FESTIVAL STATUS */
 .fest-stat{border-radius:var(--rs);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.fest-stat.on{background:var(--gl)}
-.fest-stat.on span{color:var(--green);font-size:13px;font-weight:500}
-.fest-stat.off{background:var(--rl)}
-.fest-stat.off span{color:var(--red);font-size:13px;font-weight:500}
+.fest-stat.on{background:var(--gl)}.fest-stat.on span{color:var(--green);font-size:13px;font-weight:500}
+.fest-stat.off{background:var(--rl)}.fest-stat.off span{color:var(--red);font-size:13px;font-weight:500}
 
-/* LIVE TABLE */
-.live-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
-.live-dot.on{background:var(--green)}.live-dot.off{background:var(--muted)}
+/* QR CARDS */
+.qr-card{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:20px;text-align:center;position:relative}
+.qr-card .qc-zone{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.qr-card .qc-em{font-size:26px;margin-bottom:10px}
+.qr-code-box{width:140px;height:140px;margin:0 auto 10px;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff}
+.qr-timer{font-size:12px;color:var(--muted);margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px}
+.qr-tbar{width:70px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
+.qr-tfill{height:100%;background:var(--blue);transition:width 1s linear}
+.qr-disabled{opacity:.4;pointer-events:none}
+.qr-disabled-overlay{position:absolute;inset:0;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--red);border-radius:var(--r)}
 
 /* PUSH PREVIEW */
 .push-prev{background:var(--blue);border-radius:var(--rs);padding:12px 16px;color:#fff;display:flex;align-items:center;gap:10px;margin:12px 0}
 .push-prev p{flex:1;font-size:13px;line-height:1.4}
 
-/* EXHIBITOR CARD */
+/* EXHIBITOR */
 .ex-admin{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
-.ex-admin-h{padding:13px 15px;display:flex;align-items:center;justify-content:space-between}
+.ex-admin-h{padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ex-admin-i{flex:1}
 .ex-admin-i h4{font-size:14px;font-weight:500}
 .ex-admin-i p{font-size:12px;color:var(--muted);margin-top:2px}
 
-/* ANIMATOR / EXHIBITOR DASH */
+/* ZONE STAT */
 .zone-stat-card{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:16px;text-align:center}
 .zone-stat-card .ze{font-size:32px;margin-bottom:8px}
-.zone-stat-card .zn{font-size:13px;font-weight:500;margin-bottom:4px}
 .zone-stat-card .zv{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--blue)}
 .zone-stat-card .zl{font-size:12px;color:var(--muted)}
 
-/* TOKEN CARD */
-.token-card{background:#fff;border-radius:var(--r);border:1px solid var(--border);padding:18px;text-align:center;position:relative}
-.token-card .tc-zone{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
-.token-card .tc-em{font-size:28px;margin-bottom:8px}
-.token-card code{font-family:monospace;font-size:24px;font-weight:800;letter-spacing:4px;background:var(--bg);padding:10px 14px;border-radius:var(--rs);display:block;margin-bottom:8px;color:var(--text)}
-.token-card .tc-timer{font-size:12px;color:var(--muted)}
-.token-bar{width:80px;height:4px;background:var(--border);border-radius:2px;display:inline-block;vertical-align:middle;margin-left:6px;overflow:hidden}
-.token-bar-fill{height:100%;background:var(--blue);transition:width 1s linear}
+/* MAP HISTORY */
+.map-hist-item{background:#fff;border:1px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.map-hist-item img{width:60px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.map-hist-info{flex:1}
+.map-hist-info h4{font-size:13px;font-weight:500}
+.map-hist-info p{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* LIVE DOT */
+.ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.ldot.on{background:var(--green)}.ldot.off{background:var(--muted)}
 
 /* TOAST */
-.toast{position:fixed;top:20px;right:20px;background:var(--blue);color:#fff;padding:11px 18px;border-radius:9px;font-size:14px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:all .3s;transform:translateY(-10px)}
+.toast{position:fixed;top:20px;right:20px;background:var(--blue);color:#fff;padding:11px 18px;border-radius:9px;font-size:14px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:all .3s;transform:translateY(-10px);pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
@@ -172,7 +206,14 @@ tr:hover td{background:var(--bg)}
       <h1>Mi a pálya? 2026</h1>
       <p>Magyar Elektrotechnikai Egyesület</p>
     </div>
-    <div class="fg"><label>E-mail cím</label><input type="email" id="l-email" placeholder="pl. admin@mee.hu" autocomplete="email"></div>
+    <div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500">Nézet:</p>
+      <div class="login-view-toggle">
+        <button class="lvt-btn active" id="lv-desktop" onclick="setLoginView('desktop',this)">🖥 Asztali</button>
+        <button class="lvt-btn" id="lv-mobile" onclick="setLoginView('mobile',this)">📱 Mobilos</button>
+      </div>
+    </div>
+    <div class="fg"><label>E-mail cím</label><input type="email" id="l-email" placeholder="E-mail cím" autocomplete="email"></div>
     <div class="fg"><label>Jelszó</label><input type="password" id="l-pass" placeholder="Jelszó" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Belépés →</button>
     <p class="login-err" id="login-err"></p>
@@ -181,36 +222,46 @@ tr:hover td{background:var(--bg)}
 
 <!-- APP -->
 <div id="app-layout">
-  <aside class="sidebar">
-    <div class="sb-logo"><h2>Mi a pálya? ⚡</h2><p>Admin Panel · 2026</p></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo"><h2>Mi a pálya? ⚡</h2><p>Admin · 2026</p></div>
     <div class="sb-user">
       <span class="su-role" id="sb-role">Rendszergazda</span>
-      <span class="su-email" id="sb-email">admin@mee.hu</span>
+      <span class="su-email" id="sb-email">–</span>
     </div>
     <nav class="sb-nav" id="sidebar-nav"></nav>
-    <div class="sb-foot"><button class="logout" onclick="doLogout()">← Kijelentkezés</button></div>
+    <div class="sb-foot">
+      <button class="logout" onclick="doLogout()">← Kijelentkezés</button>
+      <!-- Nézet váltó oldalsávban -->
+      <div class="view-toggle-wrap desktop-only">
+        <div class="view-toggle">
+          <button class="vt-btn active" id="vt-desktop" onclick="setView('desktop',this)">🖥 Asztali</button>
+          <button class="vt-btn" id="vt-mobile" onclick="setView('mobile',this)">📱 Mobil</button>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <main class="main">
     <div class="topbar">
       <h1 id="page-title">Dashboard</h1>
-      <div style="display:flex;align-items:center;gap:12px">
+      <div class="topbar-right">
+        <button class="refresh-btn" onclick="refreshAll()">🔄 Frissítés</button>
         <div class="live-badge active" id="live-badge">Fesztivál aktív</div>
-        <span style="font-size:13px;color:#6b7280" id="tb-time"></span>
+        <span style="font-size:13px;color:var(--muted)" id="tb-time"></span>
       </div>
     </div>
 
-    <!-- DASHBOARD (admin) -->
+    <!-- DASHBOARD -->
     <div class="page active" id="p-dash">
       <div class="sgrid">
-        <div class="sc"><div class="lbl">👤 Regisztrált diák</div><div class="val" id="st-users">–</div><div class="sub" id="st-users-sub">ma</div></div>
-        <div class="sc"><div class="lbl">📖 Pecsétek</div><div class="val" id="st-stamps">–</div><div class="sub">összesen</div></div>
+        <div class="sc"><div class="lbl">👤 Regisztrált diák</div><div class="val" id="st-users">–</div><div class="sub">összesen</div></div>
+        <div class="sc"><div class="lbl">📖 Pecsétek</div><div class="val" id="st-stamps">–</div><div class="sub">begyűjtve</div></div>
         <div class="sc"><div class="lbl">🏆 Kész profil</div><div class="val" id="st-profiles">–</div><div class="sub">befejeztek</div></div>
         <div class="sc"><div class="lbl">⚠️ Gyanús kísérlet</div><div class="val" id="st-blocked" style="color:var(--red)">–</div><div class="sub">utolsó 2 óra</div></div>
       </div>
       <div class="two">
         <div class="card">
-          <div class="ch"><h3>Zónák látogatottsága</h3><button class="btn btn-o btn-sm" onclick="loadStats()">🔄</button></div>
+          <div class="ch"><h3>Zónák látogatottsága</h3></div>
           <div class="cb" id="dash-zones"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
         </div>
         <div class="card">
@@ -224,35 +275,33 @@ tr:hover td{background:var(--bg)}
     <div class="page" id="p-festival">
       <div class="card">
         <div class="ch"><h3>Fesztivál státusz</h3></div>
-        <div>
-          <div id="fest-stat-bar" class="fest-stat on" style="margin:14px 18px 0">
-            <span style="font-size:18px" id="fest-icon">✅</span>
-            <span id="fest-stat-txt">A fesztivál AKTÍV — a diákok látják az appot</span>
-          </div>
-          <div class="toggle-row">
-            <div class="tr-info">
-              <h3>Fesztivál be/ki kapcsolása</h3>
-              <p>Kikapcsolt állapotban a diákok "Hamarosan" oldalt látnak</p>
-            </div>
-            <label class="toggle"><input type="checkbox" id="fest-toggle" checked onchange="toggleFestival()"><span class="toggle-sl"></span></label>
-          </div>
+        <div id="fest-stat-bar" class="fest-stat on" style="margin:14px 18px 0">
+          <span id="fest-icon" style="font-size:18px">✅</span>
+          <span id="fest-stat-txt">A fesztivál AKTÍV</span>
+        </div>
+        <div class="toggle-row">
+          <div class="tr-info"><h3>Fesztivál be/ki kapcsolás</h3><p>Kikapcsolt állapotban a diákok "Hamarosan" oldalt látnak</p></div>
+          <label class="toggle"><input type="checkbox" id="fest-toggle" checked onchange="toggleFestival()"><span class="toggle-sl"></span></label>
         </div>
       </div>
       <div class="card">
-        <div class="ch"><h3>Fesztivál adatok</h3></div>
-        <div class="cb">
-          <div class="fg2"><label>Fesztivál neve</label><input type="text" id="fest-name" value="Mi a pálya? 2026"></div>
-          <div class="fg2"><label>Dátum</label><input type="date" id="fest-date" value="2026-10-15"></div>
-          <button class="btn btn-p" onclick="showToast('💾 Beállítások mentve!')">💾 Mentés</button>
+        <div class="ch"><h3>QR pecsétgyűjtés — Globális kapcsoló</h3></div>
+        <div class="toggle-row">
+          <div class="tr-info"><h3>Összes QR kód engedélyezve</h3><p>Ha kikapcsolod, egyik zónánál sem lehet pecsétet gyűjteni</p></div>
+          <label class="toggle"><input type="checkbox" id="qr-global-toggle" checked onchange="toggleQRGlobal()"><span class="toggle-sl"></span></label>
         </div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>QR kapcsolók zónánként</h3></div>
+        <div class="cb" id="qr-zone-toggles"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
       </div>
     </div>
 
     <!-- PUSH -->
     <div class="page" id="p-push">
-      <div class="alert alert-i">📢 Az üzenet azonnal megjelenik minden aktív diák telefonján. A megadott idő elteltével automatikusan eltűnik.</div>
+      <div class="alert alert-i">📢 Az üzenet azonnal megjelenik minden aktív diák telefonján.</div>
       <div class="card">
-        <div class="ch"><h3>Új push üzenet küldése</h3></div>
+        <div class="ch"><h3>Új push üzenet</h3></div>
         <div class="cb">
           <div class="fg2"><label>Üzenet szövege</label><textarea id="push-msg" placeholder="pl. Lassan kezdődik a fizikai kísérlet az Energia zónában! ⚡" rows="3" oninput="updatePushPreview()"></textarea></div>
           <div class="form-row">
@@ -263,7 +312,7 @@ tr:hover td{background:var(--bg)}
                 <option value="30000">30 másodperc</option>
                 <option value="60000">1 perc</option>
                 <option value="300000">5 perc</option>
-                <option value="0">Manuális bezárásig (×)</option>
+                <option value="0">Manuális bezárásig</option>
               </select>
             </div>
             <div class="fg2" style="margin:0;display:flex;align-items:flex-end">
@@ -310,22 +359,25 @@ tr:hover td{background:var(--bg)}
     <!-- EXHIBITORS -->
     <div class="page" id="p-exhibitors">
       <div class="card">
-        <div class="ch"><h3>Új kiállító hozzáadása</h3></div>
+        <div class="ch"><h3 id="ex-form-title">Új kiállító hozzáadása</h3></div>
         <div class="cb">
           <div class="form-row">
             <div class="fg2" style="margin:0"><label>Cég neve *</label><input type="text" id="ex-name" placeholder="pl. MVM Csoport"></div>
             <div class="fg2" style="margin:0"><label>Zóna</label>
               <select id="ex-zone">
                 <option value="">– Zóna nélkül –</option>
-                <option value="energia">⚡ Zöld Energia</option><option value="ipar">🤖 Ipar 4.0</option><option value="kiber">🔐 Kiberbiztonság</option><option value="jarmu">🚗 Járműipar</option><option value="feny">💡 Fény & Világítás</option><option value="smart">🏠 Okos Otthon</option><option value="halo">📡 Hálózatok</option><option value="print3d">🖨 3D Világ</option>
+                <option value="energia">⚡ Zöld Energia</option><option value="ipar">🤖 Ipar 4.0</option><option value="kiber">🔐 Kiberbiztonság</option><option value="jarmu">🚗 Járműipar</option><option value="feny">💡 Fény</option><option value="smart">🏠 Smart Otthon</option><option value="halo">📡 Hálózat</option><option value="print3d">🖨 3D Világ</option>
               </select>
             </div>
           </div>
-          <div class="fg2" style="margin-top:12px"><label>Bemutatkozó szöveg</label><textarea id="ex-desc" placeholder="Rövid bemutatkozás..."></textarea></div>
+          <div class="fg2" style="margin-top:12px"><label>Bemutatkozó szöveg</label><textarea id="ex-desc" placeholder="Rövid bemutatkozás a diákoknak..."></textarea></div>
           <div class="fg2"><label>YouTube embed link</label><input type="url" id="ex-yt" placeholder="https://www.youtube.com/embed/VIDEO_ID"></div>
-          <div class="alert alert-i" style="margin-bottom:12px">💡 YouTube embed: <code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px">youtube.com/embed/VIDEO_ID</code> formátum kell (nem watch?v=)</div>
+          <div class="alert alert-i" style="margin-bottom:12px">💡 Embed formátum: <code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px">youtube.com/embed/VIDEO_ID</code></div>
           <div class="fg2"><label>Weboldal</label><input type="url" id="ex-web" placeholder="https://..."></div>
-          <button class="btn btn-p" onclick="addExhibitor()">➕ Kiállító hozzáadása</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-p" id="ex-submit-btn" onclick="submitExhibitor()">➕ Kiállító hozzáadása</button>
+            <button class="btn btn-o" id="ex-cancel-btn" onclick="cancelExhibitorEdit()" style="display:none">Mégse</button>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -336,7 +388,7 @@ tr:hover td{background:var(--bg)}
 
     <!-- MAP -->
     <div class="page" id="p-map">
-      <div class="alert alert-i">🗺 Add meg a helyszíni térkép nyilvánosan elérhető képlinkjét. Ajánlott: Google Drive közvetlen link, Imgur, vagy bármely statikus URL.</div>
+      <div class="alert alert-i">🗺 Add meg a helyszíni térkép nyilvánosan elérhető képlinkjét (Google Drive, Imgur, stb.).</div>
       <div class="card">
         <div class="ch"><h3>Térkép feltöltése</h3></div>
         <div class="cb">
@@ -352,15 +404,25 @@ tr:hover td{background:var(--bg)}
         </div>
       </div>
       <div class="card">
-        <div class="ch"><h3>Jelenlegi térkép</h3></div>
-        <div class="cb" id="current-map"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
+        <div class="ch"><h3>Előzmények</h3><button class="btn btn-o btn-sm" onclick="loadMapHistory()">🔄</button></div>
+        <div class="cb" id="map-history"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
       </div>
+    </div>
+
+    <!-- QR TOKENEK -->
+    <div class="page" id="p-qr">
+      <div class="alert alert-w">⏱ Tokenek <strong>5 percenként automatikusan változnak</strong>. A diákok kamerával olvassák be.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">Aktív QR kódok</h2>
+        <button class="btn btn-p" onclick="loadQRCodes()">🔄 Frissítés</button>
+      </div>
+      <div id="qr-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px"></div>
     </div>
 
     <!-- USERS -->
     <div class="page" id="p-users">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <input type="text" id="user-search" placeholder="🔍 Keresés becenév, token alapján..." style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:13px;width:280px;font-family:'DM Sans',sans-serif;outline:none" oninput="filterUsers()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+        <input type="text" id="user-search" placeholder="🔍 Becenév, token..." style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:13px;width:220px;font-family:'DM Sans',sans-serif;outline:none" oninput="filterUsers()">
         <button class="btn btn-o" onclick="exportCSV()">⬇️ CSV export</button>
       </div>
       <div class="card">
@@ -371,48 +433,36 @@ tr:hover td{background:var(--bg)}
       </div>
     </div>
 
-    <!-- QR TOKENS -->
-    <div class="page" id="p-qr">
-      <div class="alert alert-w">⏱ Tokenek <strong>5 percenként automatikusan változnak</strong>. Lejárt tokennel nem szerezhető pecsét.</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h2 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">Aktív QR tokenek</h2>
-        <button class="btn btn-p" onclick="loadTokens()">🔄 Frissítés</button>
-      </div>
-      <div id="token-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px"></div>
-    </div>
-
     <!-- SECURITY -->
     <div class="page" id="p-security">
       <div class="two">
         <div class="card">
           <div class="ch"><h3>Biztonsági napló</h3><button class="btn btn-o btn-sm" onclick="loadSecurityLog()">🔄</button></div>
-          <div class="cb" id="sec-log"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
+          <div class="cb" id="sec-log"></div>
         </div>
-        <div>
-          <div class="card">
-            <div class="ch"><h3>Védelmi státusz</h3></div>
-            <div class="cb">
-              <div style="display:flex;flex-direction:column;gap:9px">
-                <div style="display:flex;justify-content:space-between"><span style="font-size:13px">⏱ Token lejárat</span><span class="badge bg">5 perc</span></div>
-                <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🔄 Egyszeri felhasználás</span><span class="badge bg">Aktív</span></div>
-                <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🚦 Rate limiting</span><span class="badge bg">10/perc/IP</span></div>
-                <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🔐 HTTPS</span><span class="badge bg">Aktív</span></div>
-                <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🛡 JWT Auth</span><span class="badge bg">Aktív</span></div>
-              </div>
+        <div class="card">
+          <div class="ch"><h3>Védelmi státusz</h3></div>
+          <div class="cb">
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;justify-content:space-between"><span style="font-size:13px">⏱ Token lejárat</span><span class="badge bg">5 perc</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🔄 Egyszeri felhasználás</span><span class="badge bg">Aktív</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🚦 Rate limiting</span><span class="badge bg">15/perc/IP</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:13px">🔐 HTTPS</span><span class="badge bg">Aktív</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:13px">📋 Audit napló</span><span class="badge bg">Minden művelet</span></div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SETTINGS (felhasználókezelés) -->
+    <!-- SETTINGS -->
     <div class="page" id="p-settings">
       <div class="card">
         <div class="ch"><h3>Új admin felhasználó létrehozása</h3></div>
         <div class="cb">
-          <div class="alert alert-i" style="margin-bottom:16px">👤 Az animátor és kiállító fiókokat itt hozd létre. Ők a saját jelszavukkal lépnek be és csak a saját nézetüket látják.</div>
+          <div class="alert alert-i" style="margin-bottom:16px">👤 Animátor és kiállító fiókokat itt hozz létre. Ők saját jelszavukkal lépnek be.</div>
           <div class="form-row">
-            <div class="fg2" style="margin:0"><label>E-mail cím *</label><input type="email" id="nu-email" placeholder="pl. animátor1@mee.hu"></div>
+            <div class="fg2" style="margin:0"><label>E-mail cím *</label><input type="email" id="nu-email" placeholder="pl. animátor@mee.hu"></div>
             <div class="fg2" style="margin:0"><label>Jelszó *</label><input type="password" id="nu-pass" placeholder="Min. 8 karakter"></div>
           </div>
           <div class="form-row" style="margin-top:12px">
@@ -423,28 +473,30 @@ tr:hover td{background:var(--bg)}
                 <option value="admin">🔑 Rendszergazda</option>
               </select>
             </div>
-            <div class="fg2" style="margin:0" id="nu-zone-wrap"><label>Zóna (animátorhoz/kiállítóhoz)</label>
+            <div class="fg2" style="margin:0" id="nu-zone-wrap"><label>Zóna</label>
               <select id="nu-zone">
-                <option value="">– Nincs zóna –</option>
-                <option value="energia">⚡ Zöld Energia</option><option value="ipar">🤖 Ipar 4.0</option><option value="kiber">🔐 Kiberbiztonság</option><option value="jarmu">🚗 Járműipar</option><option value="feny">💡 Fény</option><option value="smart">🏠 Smart Otthon</option><option value="halo">📡 Hálózat</option><option value="print3d">🖨 3D Világ</option>
+                <option value="">– Nincs –</option>
+                <option value="energia">⚡ Energia</option><option value="ipar">🤖 Ipar 4.0</option><option value="kiber">🔐 Kiberbiztonság</option><option value="jarmu">🚗 Jármű</option><option value="feny">💡 Fény</option><option value="smart">🏠 Smart</option><option value="halo">📡 Hálózat</option><option value="print3d">🖨 3D</option>
               </select>
             </div>
           </div>
-          <button class="btn btn-p" style="margin-top:14px" onclick="createAdminUser()">➕ Felhasználó létrehozása</button>
+          <button class="btn btn-p" style="margin-top:14px" onclick="createAdminUser()">➕ Létrehozás</button>
         </div>
       </div>
       <div class="card">
-        <div class="ch"><h3>Meglévő admin felhasználók</h3><button class="btn btn-o btn-sm" onclick="loadAdminUsers()">🔄</button></div>
-        <div id="admin-users-list"><p style="padding:16px;font-size:13px;color:var(--muted)">Betöltés...</p></div>
+        <div class="ch"><h3>Admin felhasználók</h3><button class="btn btn-o btn-sm" onclick="loadAdminUsers()">🔄</button></div>
+        <div id="admin-users-list"></div>
       </div>
     </div>
 
-    <!-- ANIMATOR DASH -->
+    <!-- ANIMATOR -->
     <div class="page" id="p-animator">
-      <div class="alert alert-g">🎪 Animátor nézet — a te zónád: <strong id="anim-zone-name">–</strong></div>
+      <div class="alert alert-g">🎪 Animátor nézet — zónád: <strong id="anim-zone-name">–</strong></div>
       <div style="margin-bottom:18px">
-        <h2 style="font-family:'Syne',sans-serif;font-size:16px;margin-bottom:12px">Aktív QR token — a te zónád</h2>
-        <div id="anim-token" style="max-width:300px"></div>
+        <h3 style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">A te zónád QR kódja</h3>
+        <div style="max-width:220px">
+          <div id="anim-qr-card"></div>
+        </div>
       </div>
       <div class="card">
         <div class="ch"><h3>Zónák látogatottsága</h3><button class="btn btn-o btn-sm" onclick="loadZoneStats()">🔄</button></div>
@@ -452,13 +504,21 @@ tr:hover td{background:var(--bg)}
       </div>
     </div>
 
-    <!-- EXHIBITOR DASH -->
+    <!-- EXHIBITOR -->
     <div class="page" id="p-exhibitor">
-      <div class="alert alert-g">🏢 Kiállító nézet — a te zónád statisztikái</div>
+      <div class="alert alert-g">🏢 Kiállító nézet — saját zónád és cégeid</div>
       <div class="three" id="exhibitor-stats" style="margin-bottom:18px"></div>
+      <!-- Saját kiállító QR -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="ch"><h3>Zóna QR kód</h3></div>
+        <div class="cb" style="display:flex;justify-content:center">
+          <div id="exhibitor-qr-card" style="max-width:200px;width:100%"></div>
+        </div>
+      </div>
+      <!-- Kiállító tartalom szerkesztés -->
       <div class="card">
-        <div class="ch"><h3>A te cégetek adatai</h3></div>
-        <div class="cb" id="exhibitor-info"><p style="font-size:13px;color:var(--muted)">Betöltés...</p></div>
+        <div class="ch"><h3>Saját kiállítói tartalom</h3><button class="btn btn-o btn-sm" onclick="loadExhibitorContent()">🔄</button></div>
+        <div class="cb" id="exhibitor-content"></div>
       </div>
     </div>
 
@@ -470,100 +530,111 @@ const API = window.location.hostname==='localhost'
   ? 'http://localhost:3000'
   : 'https://miapalya-2026-production.up.railway.app';
 
-let jwt = null;
-let currentRole = null;
-let currentZoneId = null;
-let allUsers = [];
-let tokenInterval = null;
-let tokenSeconds = 300;
+let jwt=null, currentRole=null, currentZoneId=null;
+let allUsers=[], qrIntervalId=null, qrSecondsLeft=300;
+let editingExhibitorId=null;
+
+// ── VIEW TOGGLE ───────────────────────────────────────────────────────────────
+let preferredView = localStorage.getItem('adminView') || 'auto';
+
+function detectView(){
+  const isMobile = window.innerWidth < 768 || /iPhone|Android|iPad/i.test(navigator.userAgent);
+  return isMobile ? 'mobile' : 'desktop';
+}
+
+function applyView(view){
+  const actual = view==='auto' ? detectView() : view;
+  if(actual==='mobile') document.body.classList.add('mobile-view');
+  else document.body.classList.remove('mobile-view');
+  // Sync buttons
+  ['vt-desktop','vt-mobile'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
+  const activeBtn = document.getElementById(actual==='mobile'?'vt-mobile':'vt-desktop');
+  if(activeBtn)activeBtn.classList.add('active');
+}
+
+function setView(v, btn){
+  preferredView=v; localStorage.setItem('adminView',v);
+  applyView(v);
+  document.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+
+function setLoginView(v, btn){
+  preferredView=v; localStorage.setItem('adminView',v);
+  document.querySelectorAll('.lvt-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
-  const email = document.getElementById('l-email').value.trim();
-  const pass  = document.getElementById('l-pass').value;
-  const btn   = document.getElementById('login-btn');
-  const err   = document.getElementById('login-err');
-
+  const email=document.getElementById('l-email').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  const btn=document.getElementById('login-btn');
+  const err=document.getElementById('login-err');
   if(!email||!pass){showErr('Töltsd ki az összes mezőt!');return;}
-  btn.disabled=true; btn.textContent='Belépés...';
-  err.style.display='none';
-
+  btn.disabled=true; btn.textContent='Belépés...'; err.style.display='none';
   try{
-    const r = await fetch(`${API}/api/auth/admin-login`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass})
-    });
-    const d = await r.json();
+    const r=await fetch(`${API}/api/auth/admin-login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
     if(!r.ok){showErr(d.message||'Hibás email vagy jelszó.');btn.disabled=false;btn.textContent='Belépés →';return;}
     jwt=d.token; currentRole=d.role; currentZoneId=d.zoneId;
-    startApp(d.role,d.email,d.zoneId);
-  }catch{
-    showErr('Nem sikerült csatlakozni a szerverhez.');
-    btn.disabled=false; btn.textContent='Belépés →';
-  }
+    startApp(d.role, email, d.zoneId);
+  }catch{showErr('Nem sikerült csatlakozni.');btn.disabled=false;btn.textContent='Belépés →';}
 }
+function showErr(msg){const e=document.getElementById('login-err');e.textContent=msg;e.style.display='block';document.getElementById('login-btn').disabled=false;document.getElementById('login-btn').textContent='Belépés →';}
 
-function showErr(msg){
-  const e=document.getElementById('login-err');
-  e.textContent=msg; e.style.display='block';
-  document.getElementById('login-btn').disabled=false;
-  document.getElementById('login-btn').textContent='Belépés →';
-}
-
-function startApp(role,email,zoneId){
+function startApp(role, email, zoneId){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-layout').style.display='block';
   const roleLabels={admin:'🔑 Rendszergazda',animator:'🎪 Animátor',exhibitor:'🏢 Kiállító'};
   document.getElementById('sb-role').textContent=roleLabels[role]||role;
   document.getElementById('sb-email').textContent=email;
   buildNav(role);
+  applyView(preferredView);
   setInterval(updateClock,1000); updateClock();
 
   if(role==='admin'){
-    loadStats(); loadLiveUsers();
+    loadStats(); loadLiveUsers(); loadFestivalStatus(); loadQRZoneToggles();
     setInterval(()=>{loadStats();loadLiveUsers();},15000);
-    loadFestivalStatus();
     showPage('p-dash',null);
-  } else if(role==='animator'){
-    loadAnimatorDash(zoneId);
-    showPage('p-animator',null);
-  } else if(role==='exhibitor'){
-    loadExhibitorDash(zoneId);
-    showPage('p-exhibitor',null);
+  }else if(role==='animator'){
+    loadAnimatorDash(zoneId); showPage('p-animator',null);
+  }else if(role==='exhibitor'){
+    loadExhibitorDash(zoneId); showPage('p-exhibitor',null);
   }
 }
 
+function doLogout(){jwt=null;currentRole=null;document.getElementById('login-screen').style.display='flex';document.getElementById('app-layout').style.display='none';document.getElementById('l-pass').value='';if(qrIntervalId)clearInterval(qrIntervalId);}
+
+function authH(){return{'Content-Type':'application/json','Authorization':`Bearer ${jwt}`};}
+
 function buildNav(role){
   const nav=document.getElementById('sidebar-nav');
-  const links = {
-    admin:[
-      {s:'Áttekintés'},{id:'p-dash',icon:'📊',label:'Dashboard'},
-      {id:'p-festival',icon:'🎪',label:'Fesztivál'},
-      {s:'Kommunikáció'},{id:'p-push',icon:'📢',label:'Push üzenetek'},
-      {id:'p-dates',icon:'📅',label:'Fontos dátumok'},
-      {s:'Tartalom'},{id:'p-exhibitors',icon:'🏢',label:'Kiállítók'},
-      {id:'p-map',icon:'🗺',label:'Térkép'},
-      {s:'Rendszer'},{id:'p-qr',icon:'📱',label:'QR tokenek'},
-      {id:'p-users',icon:'👥',label:'Regisztráltak'},
-      {id:'p-security',icon:'🔐',label:'Biztonsági napló'},
-      {id:'p-settings',icon:'⚙️',label:'Felhasználók'},
-    ],
-    animator:[
-      {s:'Animátor'},{id:'p-animator',icon:'🎪',label:'Saját nézet'},
-    ],
-    exhibitor:[
-      {s:'Kiállító'},{id:'p-exhibitor',icon:'🏢',label:'Saját nézet'},
-    ]
-  };
-  nav.innerHTML=(links[role]||links.admin).map(l=>{
+  const all=[
+    {s:'Áttekintés'},{id:'p-dash',i:'📊',l:'Dashboard',roles:['admin']},
+    {id:'p-festival',i:'🎪',l:'Fesztivál & QR',roles:['admin']},
+    {s:'Kommunikáció'},{id:'p-push',i:'📢',l:'Push üzenetek',roles:['admin']},
+    {id:'p-dates',i:'📅',l:'Fontos dátumok',roles:['admin']},
+    {s:'Tartalom'},{id:'p-exhibitors',i:'🏢',l:'Kiállítók',roles:['admin','exhibitor']},
+    {id:'p-map',i:'🗺',l:'Térkép',roles:['admin']},
+    {s:'Rendszer'},{id:'p-qr',i:'📱',l:'QR tokenek',roles:['admin','animator']},
+    {id:'p-users',i:'👥',l:'Regisztráltak',roles:['admin']},
+    {id:'p-security',i:'🔐',l:'Biztonsági napló',roles:['admin']},
+    {id:'p-settings',i:'⚙️',l:'Felhasználók',roles:['admin']},
+    {id:'p-animator',i:'🎪',l:'Animátor nézet',roles:['animator']},
+    {id:'p-exhibitor',i:'🏢',l:'Kiállító nézet',roles:['exhibitor']},
+  ];
+  nav.innerHTML=all.filter(l=>!l.roles||l.roles.includes(role)).map(l=>{
     if(l.s)return`<div class="ns">${l.s}</div>`;
-    return`<div class="nl" onclick="showPage('${l.id}',this)"><span class="ni">${l.icon}</span> ${l.label}</div>`;
+    return`<div class="nl" onclick="showPage('${l.id}',this)"><span class="ni">${l.i}</span> ${l.l}</div>`;
   }).join('');
 }
 
-function doLogout(){jwt=null;currentRole=null;document.getElementById('login-screen').style.display='flex';document.getElementById('app-layout').style.display='none';document.getElementById('l-pass').value='';}
-
-function authH(){return{'Content-Type':'application/json','Authorization':`Bearer ${jwt}`};}
+// ── REFRESH ALL ───────────────────────────────────────────────────────────────
+function refreshAll(){
+  loadStats(); loadLiveUsers(); loadFestivalStatus();
+  showToast('🔄 Adatok frissítve!');
+}
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
 async function loadStats(){
@@ -572,7 +643,7 @@ async function loadStats(){
     if(!r.ok)return;
     const d=await r.json();
     document.getElementById('st-users').textContent=d.totalUsers??'–';
-    document.getElementById('st-stamps').textContent=(d.totalStamps??'–').toLocaleString('hu-HU');
+    document.getElementById('st-stamps').textContent=(+d.totalStamps||0).toLocaleString('hu-HU');
     document.getElementById('st-profiles').textContent=d.totalProfiles??'–';
     document.getElementById('st-blocked').textContent=d.suspiciousAttempts??'–';
   }catch{}
@@ -585,371 +656,271 @@ async function loadZoneStats(){
     if(!r.ok)return;
     const{zones}=await r.json();
     const max=Math.max(...zones.map(z=>+z.visitors),1);
-    document.getElementById('dash-zones').innerHTML=zones.map(z=>`
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="width:22px;text-align:center">${z.emoji}</span>
-        <div style="flex:1;background:var(--bg);border-radius:4px;height:20px;overflow:hidden">
-          <div style="width:${Math.round(+z.visitors/max*100)}%;background:var(--blue);height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px">
-            ${+z.visitors>0?`<span style="font-size:11px;font-weight:600;color:#fff">${z.visitors}</span>`:''}
-          </div>
-        </div>
-        <span style="font-size:12px;color:var(--muted);width:30px;text-align:right">${z.visitors}</span>
-      </div>`).join('');
-    // Animátor nézet is
-    const ac=document.getElementById('anim-zone-stats');
-    if(ac)ac.innerHTML=zones.map(z=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:14px">${z.emoji} ${z.name}</span>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)">${z.visitors}</span>
-          <span style="font-size:12px;color:var(--muted)">látogató</span>
-        </div>
-      </div>`).join('');
+    const dz=document.getElementById('dash-zones');
+    if(dz)dz.innerHTML=zones.map(z=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:22px;text-align:center">${z.emoji}</span><div style="flex:1;background:var(--bg);border-radius:4px;height:20px;overflow:hidden"><div style="width:${Math.round(+z.visitors/max*100)}%;background:var(--blue);height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px">${+z.visitors>0?`<span style="font-size:11px;font-weight:600;color:#fff">${z.visitors}</span>`:''}</div></div><span style="font-size:12px;color:var(--muted);width:28px;text-align:right">${z.visitors}</span></div>`).join('');
+    const az=document.getElementById('anim-zone-stats');
+    if(az)az.innerHTML=zones.map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px">${z.emoji} ${z.name}</span><div style="display:flex;gap:8px;align-items:center"><span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)">${z.visitors}</span><span style="font-size:12px;color:var(--muted)">látogató</span></div></div>`).join('');
   }catch{}
 }
 
-// ── LIVE USERS ────────────────────────────────────────────────────────────────
 async function loadLiveUsers(){
   try{
     const r=await fetch(`${API}/api/admin/users/live`,{headers:authH()});
     if(!r.ok)return;
     const{users}=await r.json();
     allUsers=users;
-    document.getElementById('live-count').textContent=`${users.filter(u=>u.is_active).length} aktív`;
-    renderLiveTable(users.slice(0,8));
+    const active=users.filter(u=>u.is_active).length;
+    document.getElementById('live-count').textContent=`${active} aktív`;
+    const dl=document.getElementById('dash-live');
+    if(dl){
+      if(!users.length){dl.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs regisztrált diák.</p>';return;}
+      dl.innerHTML=`<table><thead><tr><th>Becenév</th><th>Pecsétek</th><th>Státusz</th></tr></thead><tbody>${users.slice(0,10).map(u=>`<tr><td><strong>${u.nickname||'–'}</strong><br><code style="font-size:11px;color:var(--muted)">${u.token}</code></td><td><strong>${u.stamp_count}</strong>/8</td><td><span class="ldot ${u.is_active?'on':'off'}"></span>${u.is_active?'Aktív':'Inaktív'}</td></tr>`).join('')}</tbody></table>`;
+    }
     renderUsersTable(users);
   }catch{}
 }
 
-function renderLiveTable(users){
-  const c=document.getElementById('dash-live');
-  if(!users.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs regisztrált diák.</p>';return;}
-  c.innerHTML=`<table><thead><tr><th>Becenév</th><th>Pecsétek</th><th>Státusz</th></tr></thead><tbody>${users.map(u=>`
-    <tr>
-      <td><strong>${u.nickname||'–'}</strong><br><code style="font-size:11px;color:var(--muted)">${u.token}</code></td>
-      <td><strong>${u.stamp_count}</strong>/8</td>
-      <td><span class="live-dot ${u.is_active?'on':'off'}"></span>${u.is_active?'Aktív':'Inaktív'}</td>
-    </tr>`).join('')}</tbody></table>`;
-}
-
 function renderUsersTable(users){
-  const tbody=document.getElementById('users-tbody');
-  if(!tbody)return;
-  if(!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted)">Még nincs regisztrált diák.</td></tr>';return;}
-  tbody.innerHTML=users.map(u=>`
-    <tr>
-      <td><strong>${u.nickname||'–'}</strong></td>
-      <td><code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px">${u.token}</code></td>
-      <td style="font-size:12px">${new Date(u.created_at).toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit'})}</td>
-      <td><strong>${u.stamp_count}</strong>/8</td>
-      <td style="font-size:12px">${u.profile_id||'–'}</td>
-      <td><span class="badge ${u.is_active?'bg':'bgr'}">${u.is_active?'Aktív':'Inaktív'}</span></td>
-    </tr>`).join('');
+  const tb=document.getElementById('users-tbody');if(!tb)return;
+  if(!users.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted)">Még nincs regisztrált diák.</td></tr>';return;}
+  tb.innerHTML=users.map(u=>`<tr><td><strong>${u.nickname||'–'}</strong></td><td><code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px">${u.token}</code></td><td style="font-size:12px">${new Date(u.created_at).toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit'})}</td><td><strong>${u.stamp_count}</strong>/8</td><td style="font-size:12px">${u.profile_id||'–'}</td><td><span class="badge ${u.is_active?'bg':'bgr'}">${u.is_active?'Aktív':'Inaktív'}</span></td></tr>`).join('');
 }
-
-function filterUsers(){
-  const q=document.getElementById('user-search').value.toLowerCase();
-  const filtered=allUsers.filter(u=>(u.nickname||'').toLowerCase().includes(q)||(u.token||'').toLowerCase().includes(q));
-  renderUsersTable(filtered);
-}
-
-function exportCSV(){
-  if(!allUsers.length){showToast('Nincs adat az exporthoz');return;}
-  const csv='Becenév,Token,Pecsétek,Profil,Aktív\n'+allUsers.map(u=>`${u.nickname||''},${u.token},${u.stamp_count},${u.profile_id||''},${u.is_active}`).join('\n');
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='miapálya_export.csv';a.click();
-}
+function filterUsers(){const q=document.getElementById('user-search').value.toLowerCase();renderUsersTable(allUsers.filter(u=>(u.nickname||'').toLowerCase().includes(q)||(u.token||'').toLowerCase().includes(q)));}
+function exportCSV(){if(!allUsers.length){showToast('Nincs adat');return;}const csv='Becenév,Token,Pecsétek,Profil\n'+allUsers.map(u=>`${u.nickname||''},${u.token},${u.stamp_count},${u.profile_id||''}`).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='export.csv';a.click();}
 
 // ── FESTIVAL ──────────────────────────────────────────────────────────────────
 async function loadFestivalStatus(){
   try{
     const r=await fetch(`${API}/api/admin/festival/status`,{headers:authH()});
-    if(r.ok){const d=await r.json();updateFestUI(d.active);}
+    if(r.ok){const d=await r.json();updateFestUI(d.active);document.getElementById('qr-global-toggle').checked=d.qrEnabled!==false;}
   }catch{}
 }
-
 async function toggleFestival(){
-  const active=document.getElementById('fest-toggle').checked;
-  updateFestUI(active);
-  try{
-    await fetch(`${API}/api/admin/festival/toggle`,{method:'POST',headers:authH(),body:JSON.stringify({active})});
-    showToast(active?'✅ Fesztivál bekapcsolva!':'⛔ Fesztivál kikapcsolva');
-  }catch{showToast('Szerver hiba — próbáld újra');}
+  const active=document.getElementById('fest-toggle').checked;updateFestUI(active);
+  try{await fetch(`${API}/api/admin/festival/toggle`,{method:'POST',headers:authH(),body:JSON.stringify({active})});showToast(active?'✅ Fesztivál bekapcsolva':'⛔ Kikapcsolva');}
+  catch{showToast('Szerver hiba');}
 }
-
 function updateFestUI(active){
   document.getElementById('fest-toggle').checked=active;
-  const bar=document.getElementById('fest-stat-bar');
-  const txt=document.getElementById('fest-stat-txt');
-  const icon=document.getElementById('fest-icon');
-  const lb=document.getElementById('live-badge');
-  if(active){
-    bar.className='fest-stat on'; icon.textContent='✅';
-    txt.textContent='A fesztivál AKTÍV — a diákok látják az appot';
-    lb.className='live-badge active'; lb.textContent='Fesztivál aktív';
-  }else{
-    bar.className='fest-stat off'; icon.textContent='⛔';
-    txt.textContent='A fesztivál INAKTÍV — diákok "Hamarosan" oldalt látnak';
-    lb.className='live-badge inactive'; lb.textContent='Fesztivál inaktív';
-  }
+  const bar=document.getElementById('fest-stat-bar'),txt=document.getElementById('fest-stat-txt'),icon=document.getElementById('fest-icon'),lb=document.getElementById('live-badge');
+  if(active){bar.className='fest-stat on';icon.textContent='✅';txt.textContent='A fesztivál AKTÍV — diákok látják az appot';lb.className='live-badge active';lb.textContent='Fesztivál aktív';}
+  else{bar.className='fest-stat off';icon.textContent='⛔';txt.textContent='A fesztivál INAKTÍV';lb.className='live-badge inactive';lb.textContent='Fesztivál inaktív';}
 }
 
-// ── PUSH ──────────────────────────────────────────────────────────────────────
-function updatePushPreview(){
-  const v=document.getElementById('push-msg').value.trim();
-  const pw=document.getElementById('push-prev-wrap');
-  document.getElementById('push-prev-txt').textContent=v;
-  pw.style.display=v?'block':'none';
+async function toggleQRGlobal(){
+  const enabled=document.getElementById('qr-global-toggle').checked;
+  try{await fetch(`${API}/api/admin/qr/global`,{method:'POST',headers:authH(),body:JSON.stringify({enabled})});showToast(enabled?'✅ Összes QR engedélyezve':'⛔ Összes QR letiltva');}
+  catch{showToast('Szerver hiba');}
 }
 
-async function sendPush(){
-  const msg=document.getElementById('push-msg').value.trim();
-  const dur=parseInt(document.getElementById('push-dur').value);
-  if(!msg){showToast('⚠️ Írd be az üzenetet!');return;}
+async function loadQRZoneToggles(){
+  const c=document.getElementById('qr-zone-toggles');if(!c)return;
   try{
-    const r=await fetch(`${API}/api/admin/push`,{method:'POST',headers:authH(),body:JSON.stringify({message:msg,duration_ms:dur})});
-    if(r.ok){showToast('📤 Push üzenet elküldve minden diáknak!');document.getElementById('push-msg').value='';document.getElementById('push-prev-wrap').style.display='none';loadPushHistory();}
-    else showToast('Hiba a küldésnél');
-  }catch{showToast('Szerver hiba');}
-}
-
-async function loadPushHistory(){
-  const c=document.getElementById('push-history');
-  try{
-    const r=await fetch(`${API}/api/admin/push`,{headers:authH()});
+    const r=await fetch(`${API}/api/admin/qr/zones`,{headers:authH()});
     if(!r.ok)throw new Error();
-    const{messages}=await r.json();
-    if(!messages.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nem lett üzenet küldve.</p>';return;}
-    c.innerHTML=`<table><thead><tr><th>Üzenet</th><th>Küldve</th><th>Időtartam</th><th>Státusz</th><th></th></tr></thead><tbody>${messages.map(m=>`
-      <tr>
-        <td>${m.message.slice(0,55)}${m.message.length>55?'...':''}</td>
-        <td style="font-size:12px">${new Date(m.created_at).toLocaleTimeString('hu-HU')}</td>
-        <td>${m.duration_ms?m.duration_ms/1000+'mp':'∞'}</td>
-        <td><span class="badge ${m.active?'bg':'bgr'}">${m.active?'Aktív':'Lejárt'}</span></td>
-        <td><button class="btn btn-d btn-sm" onclick="deletePush('${m.id}')">✕</button></td>
-      </tr>`).join('')}</tbody></table>`;
-  }catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
-}
-
-async function deletePush(id){
-  try{await fetch(`${API}/api/admin/push/${id}`,{method:'DELETE',headers:authH()});showToast('✓ Üzenet deaktiválva');loadPushHistory();}catch{}
-}
-
-// ── DATES ─────────────────────────────────────────────────────────────────────
-async function loadDates(){
-  const c=document.getElementById('dates-table');
-  try{
-    const r=await fetch(`${API}/api/admin/dates`,{headers:authH()});
-    if(!r.ok)throw new Error();
-    const{dates}=await r.json();
-    if(!dates.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nincs dátum.</p>';return;}
-    const cats={iskola:'🎓 Iskola',ceg:'🏢 Cég',egyeb:'📌 Egyéb'};
-    c.innerHTML=`<table><thead><tr><th>Esemény</th><th>Dátum</th><th>Helyszín</th><th>Kat.</th><th></th></tr></thead><tbody>${dates.map(d=>`
-      <tr>
-        <td><strong>${d.title}</strong>${d.link?` <a href="${d.link}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</td>
-        <td style="font-size:12px">${new Date(d.event_date).toLocaleDateString('hu-HU')}</td>
-        <td style="font-size:12px">${d.location||'–'}</td>
-        <td><span class="badge bgr">${cats[d.category]||d.category}</span></td>
-        <td><button class="btn btn-d btn-sm" onclick="deleteDate('${d.id}')">🗑</button></td>
-      </tr>`).join('')}</tbody></table>`;
-  }catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
-}
-
-async function addDate(){
-  const title=document.getElementById('d-title').value.trim();
-  const date=document.getElementById('d-date').value;
-  if(!title||!date){showToast('⚠️ Kötelező mezők hiányoznak!');return;}
-  try{
-    const r=await fetch(`${API}/api/admin/dates`,{method:'POST',headers:authH(),
-      body:JSON.stringify({title,event_date:date,location:document.getElementById('d-loc').value,category:document.getElementById('d-cat').value,link:document.getElementById('d-link').value||null})});
-    if(r.ok){showToast('✅ Dátum hozzáadva!');['d-title','d-date','d-loc','d-link'].forEach(id=>document.getElementById(id).value='');loadDates();}
-    else showToast('Hiba a mentésnél');
-  }catch{showToast('Szerver hiba');}
-}
-
-async function deleteDate(id){
-  if(!confirm('Biztosan törlöd?'))return;
-  try{await fetch(`${API}/api/admin/dates/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 Törölve');loadDates();}catch{}
-}
-
-// ── EXHIBITORS ────────────────────────────────────────────────────────────────
-async function loadExhibitors(){
-  const c=document.getElementById('exhibitors-list');
-  try{
-    const r=await fetch(`${API}/api/admin/exhibitors`,{headers:authH()});
-    if(!r.ok)throw new Error();
-    const{exhibitors}=await r.json();
-    if(!exhibitors.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nincs kiállító.</p>';return;}
-    const zn={energia:'⚡ Energia',ipar:'🤖 Ipar 4.0',kiber:'🔐 Kiber',jarmu:'🚗 Jármű',feny:'💡 Fény',smart:'🏠 Smart',halo:'📡 Hálózat',print3d:'🖨 3D'};
-    c.innerHTML=exhibitors.map(ex=>`
-      <div class="ex-admin">
-        <div class="ex-admin-h">
-          <div class="ex-admin-i"><h4>${ex.name}</h4><p>${ex.zone_id?zn[ex.zone_id]||ex.zone_id:'Zóna nélkül'}${ex.website_url?` · <a href="${ex.website_url}" target="_blank" style="font-size:11px;color:var(--blue)">weboldal↗</a>`:''}</p></div>
-          <div style="display:flex;gap:6px">
-            <span class="badge ${ex.active?'bg':'bgr'}">${ex.active?'Aktív':'Inaktív'}</span>
-            <button class="btn btn-d btn-sm" onclick="deleteExhibitor('${ex.id}')">🗑</button>
-          </div>
-        </div>
-        ${ex.description?`<p style="padding:0 15px 12px;font-size:13px;color:var(--muted)">${ex.description}</p>`:''}
-        ${ex.youtube_url?`<p style="padding:0 15px 12px;font-size:12px">▶ <a href="${ex.youtube_url}" target="_blank" style="color:var(--blue)">${ex.youtube_url.slice(0,60)}...</a></p>`:''}
+    const{zones}=await r.json();
+    c.innerHTML=zones.map(z=>`
+      <div class="toggle-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="tr-info"><h3 style="font-size:13px">${z.emoji} ${z.name}</h3></div>
+        <label class="toggle">
+          <input type="checkbox" ${z.qr_enabled!==false?'checked':''} onchange="toggleZoneQR('${z.id}',this.checked)">
+          <span class="toggle-sl"></span>
+        </label>
       </div>`).join('');
-  }catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
+  }catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba</p>';}
 }
 
-async function addExhibitor(){
-  const name=document.getElementById('ex-name').value.trim();
-  if(!name){showToast('⚠️ Add meg a cég nevét!');return;}
-  try{
-    const r=await fetch(`${API}/api/admin/exhibitors`,{method:'POST',headers:authH(),
-      body:JSON.stringify({name,zone_id:document.getElementById('ex-zone').value||null,description:document.getElementById('ex-desc').value,youtube_url:document.getElementById('ex-yt').value||null,website_url:document.getElementById('ex-web').value||null})});
-    if(r.ok){showToast('✅ Kiállító hozzáadva!');['ex-name','ex-desc','ex-yt','ex-web'].forEach(id=>document.getElementById(id).value='');document.getElementById('ex-zone').value='';loadExhibitors();}
-    else showToast('Hiba a mentésnél');
-  }catch{showToast('Szerver hiba');}
+async function toggleZoneQR(zoneId,enabled){
+  try{await fetch(`${API}/api/admin/qr/zone/${zoneId}`,{method:'POST',headers:authH(),body:JSON.stringify({enabled})});showToast(enabled?`✅ ${zoneId} QR engedélyezve`:`⛔ ${zoneId} QR letiltva`);}
+  catch{showToast('Szerver hiba');}
 }
 
-async function deleteExhibitor(id){
-  if(!confirm('Biztosan törlöd?'))return;
-  try{await fetch(`${API}/api/admin/exhibitors/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 Törölve');loadExhibitors();}catch{}
-}
+// ── QR KÓDOK ─────────────────────────────────────────────────────────────────
+const ZONES_META={energia:{n:'Zöld Energia',e:'⚡'},ipar:{n:'Ipar 4.0',e:'🤖'},kiber:{n:'Kiberbiztonság',e:'🔐'},jarmu:{n:'Jármű',e:'🚗'},feny:{n:'Fény',e:'💡'},smart:{n:'Smart Otthon',e:'🏠'},halo:{n:'Hálózat',e:'📡'},print3d:{n:'3D Világ',e:'🖨'}};
 
-// ── MAP ───────────────────────────────────────────────────────────────────────
-function previewMap(){
-  const url=document.getElementById('map-url').value;
-  if(!url){showToast('⚠️ Add meg az URL-t!');return;}
-  document.getElementById('map-prev-img').src=url;
-  document.getElementById('map-prev-wrap').style.display='block';
-}
-
-async function saveMap(){
-  const url=document.getElementById('map-url').value;
-  if(!url){showToast('⚠️ Add meg a térkép URL-jét!');return;}
-  try{
-    const r=await fetch(`${API}/api/admin/map`,{method:'POST',headers:authH(),body:JSON.stringify({image_url:url,label:document.getElementById('map-label').value})});
-    if(r.ok){showToast('✅ Térkép mentve!');loadCurrentMap();}
-    else showToast('Hiba a mentésnél');
-  }catch{showToast('Szerver hiba');}
-}
-
-async function loadCurrentMap(){
-  const c=document.getElementById('current-map');
-  try{
-    const r=await fetch(`${API}/api/admin/map`,{headers:authH()});
-    if(!r.ok)throw new Error();
-    const{maps}=await r.json();
-    if(!maps.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs feltöltve térkép.</p>';return;}
-    const m=maps[0];
-    c.innerHTML=`<div style="margin-bottom:10px"><span class="badge ${m.active?'bg':'bgr'}">${m.active?'Aktív':'Inaktív'}</span> <strong style="font-size:14px">${m.label||'Térkép'}</strong></div><img src="${m.image_url}" style="width:100%;max-width:400px;border-radius:8px;border:1px solid var(--border)">`;
-  }catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
-}
-
-// ── QR TOKENS ─────────────────────────────────────────────────────────────────
-async function loadTokens(){
-  const g=document.getElementById('token-grid');
+async function loadQRCodes(){
+  const g=document.getElementById('qr-grid');if(!g)return;
   try{
     const r=await fetch(`${API}/api/tokens/current`,{headers:authH()});
     if(!r.ok)throw new Error();
     const{tokens,rotationSeconds}=await r.json();
-    tokenSeconds=rotationSeconds;
-    g.innerHTML=tokens.map(t=>`
-      <div class="token-card">
-        <div class="tc-zone">${t.zoneName}</div>
-        <div class="tc-em">${t.emoji}</div>
-        <code>${t.token}</code>
-        <div class="tc-timer">
-          <span id="tt-${t.zoneId}">${Math.floor(t.expiresIn/60)}:${String(t.expiresIn%60).padStart(2,'0')}</span>
-          <span class="token-bar"><span class="token-bar-fill" id="tf-${t.zoneId}" style="width:${(t.expiresIn/300)*100}%"></span></span>
-        </div>
-      </div>`).join('');
-    if(tokenInterval)clearInterval(tokenInterval);
-    tokenInterval=setInterval(()=>{
-      tokenSeconds--;
-      if(tokenSeconds<=0){loadTokens();return;}
+    qrSecondsLeft=rotationSeconds;
+    g.innerHTML='';
+    tokens.forEach(t=>{
+      const div=document.createElement('div');div.className='qr-card';div.id=`qc-${t.zoneId}`;
+      const qrData=`MAP2026:${t.zoneId}:${t.token}`;
+      div.innerHTML=`<div class="qc-zone">${t.zoneName}</div><div class="qc-em">${t.emoji}</div><div class="qr-code-box" id="qrbox-${t.zoneId}"></div><div class="qr-timer"><span id="qt-${t.zoneId}">${Math.floor(t.expiresIn/60)}:${String(t.expiresIn%60).padStart(2,'0')}</span><span class="qr-tbar"><span class="qr-tfill" id="qf-${t.zoneId}" style="width:${(t.expiresIn/300)*100}%"></span></span></div>`;
+      g.appendChild(div);
+      try{new QRCode(document.getElementById(`qrbox-${t.zoneId}`),{text:qrData,width:128,height:128,colorDark:'#1a3a8a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch{}
+    });
+    if(qrIntervalId)clearInterval(qrIntervalId);
+    qrIntervalId=setInterval(()=>{
+      qrSecondsLeft--;
+      if(qrSecondsLeft<=0){loadQRCodes();return;}
       tokens.forEach(t=>{
-        const tt=document.getElementById(`tt-${t.zoneId}`);
-        const tf=document.getElementById(`tf-${t.zoneId}`);
-        if(tt)tt.textContent=`${Math.floor(tokenSeconds/60)}:${String(tokenSeconds%60).padStart(2,'0')}`;
-        if(tf)tf.style.width=`${(tokenSeconds/300)*100}%`;
+        const qt=document.getElementById(`qt-${t.zoneId}`);const qf=document.getElementById(`qf-${t.zoneId}`);
+        if(qt)qt.textContent=`${Math.floor(qrSecondsLeft/60)}:${String(qrSecondsLeft%60).padStart(2,'0')}`;
+        if(qf)qf.style.width=`${(qrSecondsLeft/300)*100}%`;
       });
     },1000);
-  }catch{g.innerHTML='<p style="font-size:13px;color:var(--muted)">Token betöltési hiba — ellenőrizd a bejelentkezést.</p>';}
+  }catch{g.innerHTML='<p style="font-size:13px;color:var(--muted)">QR betöltési hiba — ellenőrizd a JWT tokent.</p>';}
 }
+
+// ── PUSH ──────────────────────────────────────────────────────────────────────
+function updatePushPreview(){const v=document.getElementById('push-msg').value.trim();document.getElementById('push-prev-txt').textContent=v;document.getElementById('push-prev-wrap').style.display=v?'block':'none';}
+async function sendPush(){
+  const msg=document.getElementById('push-msg').value.trim();
+  const dur=parseInt(document.getElementById('push-dur').value);
+  if(!msg){showToast('⚠️ Írd be az üzenetet!');return;}
+  try{const r=await fetch(`${API}/api/admin/push`,{method:'POST',headers:authH(),body:JSON.stringify({message:msg,duration_ms:dur})});
+    if(r.ok){showToast('📤 Push elküldve!');document.getElementById('push-msg').value='';document.getElementById('push-prev-wrap').style.display='none';loadPushHistory();}
+    else showToast('Hiba a küldésnél');}catch{showToast('Szerver hiba');}
+}
+async function loadPushHistory(){
+  const c=document.getElementById('push-history');
+  try{const r=await fetch(`${API}/api/admin/push`,{headers:authH()});if(!r.ok)throw new Error();
+    const{messages}=await r.json();
+    if(!messages.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nem lett üzenet küldve.</p>';return;}
+    c.innerHTML=`<table><thead><tr><th>Üzenet</th><th>Küldve</th><th>Idő</th><th>Státusz</th><th></th></tr></thead><tbody>${messages.map(m=>`<tr><td>${m.message.slice(0,50)}${m.message.length>50?'...':''}</td><td style="font-size:12px">${new Date(m.created_at).toLocaleTimeString('hu-HU')}</td><td>${m.duration_ms?m.duration_ms/1000+'mp':'∞'}</td><td><span class="badge ${m.active?'bg':'bgr'}">${m.active?'Aktív':'Lejárt'}</span></td><td style="display:flex;gap:4px"><button class="btn btn-y btn-xs" onclick="resendPush('${m.id}')" title="Újraküldés">↩ Újra</button><button class="btn btn-d btn-xs" onclick="deletePush('${m.id}')">✕</button></td></tr>`).join('')}</tbody></table>`;}
+  catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+}
+async function resendPush(id){
+  try{const r=await fetch(`${API}/api/admin/push/${id}/resend`,{method:'POST',headers:authH()});
+    if(r.ok){showToast('📤 Újraküldve!');loadPushHistory();}else showToast('Hiba');}catch{showToast('Szerver hiba');}
+}
+async function deletePush(id){try{await fetch(`${API}/api/admin/push/${id}`,{method:'DELETE',headers:authH()});showToast('✓ Deaktiválva');loadPushHistory();}catch{}}
+
+// ── DATES ─────────────────────────────────────────────────────────────────────
+async function loadDates(){
+  const c=document.getElementById('dates-table');
+  try{const r=await fetch(`${API}/api/admin/dates`,{headers:authH()});if(!r.ok)throw new Error();
+    const{dates}=await r.json();
+    if(!dates.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nincs dátum.</p>';return;}
+    const cats={iskola:'🎓 Iskola',ceg:'🏢 Cég',egyeb:'📌 Egyéb'};
+    c.innerHTML=`<table><thead><tr><th>Esemény</th><th>Dátum</th><th>Helyszín</th><th>Kat.</th><th></th></tr></thead><tbody>${dates.map(d=>`<tr><td><strong>${d.title}</strong>${d.link?` <a href="${d.link}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</td><td style="font-size:12px">${new Date(d.event_date).toLocaleDateString('hu-HU')}</td><td style="font-size:12px">${d.location||'–'}</td><td><span class="badge bgr">${cats[d.category]||d.category}</span></td><td><button class="btn btn-d btn-sm" onclick="deleteDate('${d.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`;}
+  catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+}
+async function addDate(){
+  const title=document.getElementById('d-title').value.trim();const date=document.getElementById('d-date').value;
+  if(!title||!date){showToast('⚠️ Kötelező mezők!');return;}
+  try{const r=await fetch(`${API}/api/admin/dates`,{method:'POST',headers:authH(),body:JSON.stringify({title,event_date:date,location:document.getElementById('d-loc').value,category:document.getElementById('d-cat').value,link:document.getElementById('d-link').value||null})});
+    if(r.ok){showToast('✅ Dátum hozzáadva!');['d-title','d-date','d-loc','d-link'].forEach(id=>document.getElementById(id).value='');loadDates();}else showToast('Hiba');}catch{showToast('Szerver hiba');}
+}
+async function deleteDate(id){if(!confirm('Biztosan törlöd?'))return;try{await fetch(`${API}/api/admin/dates/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 Törölve');loadDates();}catch{}}
+
+// ── EXHIBITORS ────────────────────────────────────────────────────────────────
+async function loadExhibitors(){
+  const c=document.getElementById('exhibitors-list');
+  try{const r=await fetch(`${API}/api/admin/exhibitors`,{headers:authH()});if(!r.ok)throw new Error();
+    const{exhibitors}=await r.json();
+    if(!exhibitors.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nincs kiállító.</p>';return;}
+    const zn=ZONES_META;
+    c.innerHTML=exhibitors.map(ex=>`<div class="ex-admin"><div class="ex-admin-h"><div class="ex-admin-i"><h4>${ex.name}</h4><p>${ex.zone_id?`${zn[ex.zone_id]?.e||''} ${zn[ex.zone_id]?.n||ex.zone_id}`:'Zóna nélkül'}${ex.website_url?` · <a href="${ex.website_url}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</p></div><div style="display:flex;gap:4px"><span class="badge ${ex.active?'bg':'bgr'}">${ex.active?'Aktív':'Inaktív'}</span><button class="btn btn-o btn-xs" onclick="editExhibitor(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️</button><button class="btn btn-d btn-xs" onclick="deleteExhibitor('${ex.id}')">🗑</button></div></div>${ex.description?`<p style="padding:0 15px 12px;font-size:13px;color:var(--muted)">${ex.description}</p>`:''}</div>`).join('');}
+  catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+}
+
+function editExhibitor(ex){
+  editingExhibitorId=ex.id;
+  document.getElementById('ex-name').value=ex.name||'';
+  document.getElementById('ex-zone').value=ex.zone_id||'';
+  document.getElementById('ex-desc').value=ex.description||'';
+  document.getElementById('ex-yt').value=ex.youtube_url||'';
+  document.getElementById('ex-web').value=ex.website_url||'';
+  document.getElementById('ex-form-title').textContent='Kiállító szerkesztése';
+  document.getElementById('ex-submit-btn').textContent='💾 Mentés';
+  document.getElementById('ex-cancel-btn').style.display='inline-flex';
+  document.getElementById('ex-name').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelExhibitorEdit(){
+  editingExhibitorId=null;
+  ['ex-name','ex-desc','ex-yt','ex-web'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ex-zone').value='';
+  document.getElementById('ex-form-title').textContent='Új kiállító hozzáadása';
+  document.getElementById('ex-submit-btn').textContent='➕ Kiállító hozzáadása';
+  document.getElementById('ex-cancel-btn').style.display='none';
+}
+
+async function submitExhibitor(){
+  const name=document.getElementById('ex-name').value.trim();
+  if(!name){showToast('⚠️ Add meg a cég nevét!');return;}
+  const data={name,zone_id:document.getElementById('ex-zone').value||null,description:document.getElementById('ex-desc').value,youtube_url:document.getElementById('ex-yt').value||null,website_url:document.getElementById('ex-web').value||null};
+  try{
+    let r;
+    if(editingExhibitorId){r=await fetch(`${API}/api/admin/exhibitors/${editingExhibitorId}`,{method:'PUT',headers:authH(),body:JSON.stringify({...data,active:true})});}
+    else{r=await fetch(`${API}/api/admin/exhibitors`,{method:'POST',headers:authH(),body:JSON.stringify(data)});}
+    if(r.ok){showToast(editingExhibitorId?'✅ Kiállító frissítve!':'✅ Kiállító hozzáadva!');cancelExhibitorEdit();loadExhibitors();}
+    else showToast('Hiba a mentésnél');}catch{showToast('Szerver hiba');}
+}
+async function deleteExhibitor(id){if(!confirm('Biztosan törlöd?'))return;try{await fetch(`${API}/api/admin/exhibitors/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 Törölve');loadExhibitors();}catch{}}
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
+function previewMap(){const url=document.getElementById('map-url').value;if(!url){showToast('Add meg az URL-t!');return;}document.getElementById('map-prev-img').src=url;document.getElementById('map-prev-wrap').style.display='block';}
+async function saveMap(){
+  const url=document.getElementById('map-url').value;if(!url){showToast('Add meg az URL-t!');return;}
+  try{const r=await fetch(`${API}/api/admin/map`,{method:'POST',headers:authH(),body:JSON.stringify({image_url:url,label:document.getElementById('map-label').value})});
+    if(r.ok){showToast('✅ Térkép mentve!');loadMapHistory();}else showToast('Hiba');}catch{showToast('Szerver hiba');}
+}
+async function loadMapHistory(){
+  const c=document.getElementById('map-history');if(!c)return;
+  try{const r=await fetch(`${API}/api/admin/map`,{headers:authH()});if(!r.ok)throw new Error();
+    const{maps}=await r.json();
+    if(!maps.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs feltöltve térkép.</p>';return;}
+    c.innerHTML=maps.map(m=>`<div class="map-hist-item"><img src="${m.image_url}" alt="${m.label}" onerror="this.style.display='none'"><div class="map-hist-info"><h4>${m.label||'Térkép'}</h4><p>${new Date(m.uploaded_at).toLocaleDateString('hu-HU')} · <span class="badge ${m.active?'bg':'bgr'} " style="padding:1px 6px;font-size:10px">${m.active?'Aktív':'Inaktív'}</span></p></div><button class="btn btn-d btn-xs" onclick="deleteMap('${m.id}')">🗑</button></div>`).join('');}
+  catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+}
+async function deleteMap(id){if(!confirm('Biztosan törlöd?'))return;try{await fetch(`${API}/api/admin/map/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 Törölve');loadMapHistory();}catch{}}
 
 // ── SECURITY LOG ──────────────────────────────────────────────────────────────
 async function loadSecurityLog(){
   const c=document.getElementById('sec-log');
-  try{
-    const r=await fetch(`${API}/api/admin/security-log`,{headers:authH()});
-    if(!r.ok)throw new Error();
+  try{const r=await fetch(`${API}/api/admin/security-log`,{headers:authH()});if(!r.ok)throw new Error();
     const{events}=await r.json();
-    if(!events.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs biztonsági esemény.</p>';return;}
-    const colors={'stamp_ok':'#22c55e','token_expired':'#dc2626','rate_limit':'#dc2626','admin_action':'#1a3a8a','error':'#f97316'};
-    c.innerHTML=events.map(e=>`
-      <div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:11px;color:var(--muted);white-space:nowrap;margin-top:2px;font-family:monospace">${new Date(e.created_at).toLocaleTimeString('hu-HU')}</span>
-        <div style="width:8px;height:8px;border-radius:50%;background:${colors[e.event_type]||'#6b7280'};flex-shrink:0;margin-top:4px"></div>
-        <div><div style="font-size:13px">${e.event_type}</div><div style="font-size:11px;color:var(--muted)">${e.zone_id||''} ${e.ip_address||''}</div></div>
-      </div>`).join('');
-  }catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
+    if(!events.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs esemény.</p>';return;}
+    const cols={'stamp_ok':'#22c55e','token_expired':'#dc2626','rate_limit':'#dc2626','admin_action':'#1a3a8a','error':'#f97316'};
+    c.innerHTML=events.map(e=>{
+      const det=typeof e.details==='object'?e.details:(typeof e.details==='string'?JSON.parse(e.details||'{}'):{});
+      const who=det.admin_email?`<span style="font-size:11px;color:var(--blue);font-weight:500">${det.admin_email}</span> `:'';;
+      return`<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted);white-space:nowrap;margin-top:2px;font-family:monospace">${new Date(e.created_at).toLocaleTimeString('hu-HU')}</span><div style="width:8px;height:8px;border-radius:50%;background:${cols[e.event_type]||'#6b7280'};flex-shrink:0;margin-top:4px"></div><div><div style="font-size:13px">${who}${e.event_type}${det.action?' — '+det.action:''}</div><div style="font-size:11px;color:var(--muted)">${e.zone_id||''} ${e.ip_address||''}</div></div></div>`;
+    }).join('');}
+  catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
 }
 
 // ── ADMIN USERS ───────────────────────────────────────────────────────────────
 async function loadAdminUsers(){
   const c=document.getElementById('admin-users-list');
-  try{
-    const r=await fetch(`${API}/api/admin/admin-users`,{headers:authH()});
-    if(!r.ok)throw new Error();
+  try{const r=await fetch(`${API}/api/admin/admin-users`,{headers:authH()});if(!r.ok)throw new Error();
     const{users}=await r.json();
     const roleLabels={admin:'🔑 Admin',animator:'🎪 Animátor',exhibitor:'🏢 Kiállító'};
-    c.innerHTML=`<table><thead><tr><th>E-mail</th><th>Szerepkör</th><th>Zóna</th><th>Utolsó belépés</th><th></th></tr></thead><tbody>${users.map(u=>`
-      <tr>
-        <td>${u.email}</td>
-        <td><span class="badge bb">${roleLabels[u.role]||u.role}</span></td>
-        <td style="font-size:12px">${u.zone_id||'–'}</td>
-        <td style="font-size:12px">${u.last_login?new Date(u.last_login).toLocaleDateString('hu-HU'):'Még nem'}</td>
-        <td>${u.role!=='admin'?`<button class="btn btn-d btn-sm" onclick="deleteAdminUser('${u.id}')">Letiltás</button>`:''}</td>
-      </tr>`).join('')}</tbody></table>`;
-  }catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
+    c.innerHTML=`<table><thead><tr><th>E-mail</th><th>Szerepkör</th><th>Zóna</th><th>Utolsó belépés</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${u.email}</td><td><span class="badge bb">${roleLabels[u.role]||u.role}</span></td><td style="font-size:12px">${u.zone_id||'–'}</td><td style="font-size:12px">${u.last_login?new Date(u.last_login).toLocaleDateString('hu-HU'):'Még nem'}</td><td>${u.role!=='admin'?`<button class="btn btn-d btn-xs" onclick="deleteAdminUser('${u.id}')">Letiltás</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
+  catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
 }
-
-function updateZoneField(){
-  const role=document.getElementById('nu-role').value;
-  document.getElementById('nu-zone-wrap').style.display=role==='admin'?'none':'block';
-}
-
+function updateZoneField(){const r=document.getElementById('nu-role').value;document.getElementById('nu-zone-wrap').style.display=r==='admin'?'none':'block';}
 async function createAdminUser(){
-  const email=document.getElementById('nu-email').value.trim();
-  const pass=document.getElementById('nu-pass').value;
-  const role=document.getElementById('nu-role').value;
-  const zone=document.getElementById('nu-zone').value;
-  if(!email||!pass){showToast('⚠️ Töltsd ki a kötelező mezőket!');return;}
-  if(pass.length<8){showToast('⚠️ A jelszó minimum 8 karakter!');return;}
-  try{
-    const r=await fetch(`${API}/api/admin/admin-users`,{method:'POST',headers:authH(),
-      body:JSON.stringify({email,password:pass,role,zone_id:zone||null})});
+  const email=document.getElementById('nu-email').value.trim();const pass=document.getElementById('nu-pass').value;const role=document.getElementById('nu-role').value;const zone=document.getElementById('nu-zone').value;
+  if(!email||!pass){showToast('Töltsd ki a mezőket!');return;}if(pass.length<8){showToast('Min. 8 karakter a jelszó!');return;}
+  try{const r=await fetch(`${API}/api/admin/admin-users`,{method:'POST',headers:authH(),body:JSON.stringify({email,password:pass,role,zone_id:zone||null})});
     if(r.ok){showToast('✅ Felhasználó létrehozva!');document.getElementById('nu-email').value='';document.getElementById('nu-pass').value='';loadAdminUsers();}
-    else{const d=await r.json();showToast(d.message||'Hiba a létrehozásnál');}
-  }catch{showToast('Szerver hiba');}
+    else{const d=await r.json();showToast(d.message||'Hiba');}}catch{showToast('Szerver hiba');}
 }
-
-async function deleteAdminUser(id){
-  if(!confirm('Biztosan letiltod ezt a felhasználót?'))return;
-  try{await fetch(`${API}/api/admin/admin-users/${id}`,{method:'DELETE',headers:authH()});showToast('✓ Felhasználó letiltva');loadAdminUsers();}catch{}
-}
+async function deleteAdminUser(id){if(!confirm('Biztosan letiltod?'))return;try{await fetch(`${API}/api/admin/admin-users/${id}`,{method:'DELETE',headers:authH()});showToast('✓ Letiltva');loadAdminUsers();}catch{}}
 
 // ── ANIMATOR DASH ─────────────────────────────────────────────────────────────
 async function loadAnimatorDash(zoneId){
-  const zones={energia:'⚡ Zöld Energia',ipar:'🤖 Ipar 4.0',kiber:'🔐 Kiberbiztonság',jarmu:'🚗 Jármű',feny:'💡 Fény',smart:'🏠 Smart',halo:'📡 Hálózat',print3d:'🖨 3D'};
-  document.getElementById('anim-zone-name').textContent=zones[zoneId]||zoneId||'Nincs hozzárendelt zóna';
-  await loadTokens();
+  const zones=ZONES_META;
+  document.getElementById('anim-zone-name').textContent=zoneId?(zones[zoneId]?.e+' '+zones[zoneId]?.n)||zoneId:'Nincs hozzárendelve';
   await loadZoneStats();
-  // Animátor token szűrése
-  const at=document.getElementById('anim-token');
+  if(!zoneId)return;
   try{
-    const r=await fetch(`${API}/api/tokens/current`,{headers:authH()});
+    const r=await fetch(`${API}/api/admin/qr/token/${zoneId}`,{headers:authH()});
     if(r.ok){
-      const{tokens}=await r.json();
-      const myToken=tokens.find(t=>t.zoneId===zoneId);
-      if(myToken){
-        at.innerHTML=`<div class="token-card"><div class="tc-zone">${myToken.zoneName}</div><div class="tc-em">${myToken.emoji}</div><code style="font-size:28px">${myToken.token}</code><div class="tc-timer">Vált: ${myToken.expiresIn}mp múlva</div></div>`;
+      const d=await r.json();
+      const box=document.getElementById('anim-qr-card');
+      if(box){
+        box.innerHTML=`<div class="qr-card"><div class="qc-zone">${d.zone.name}</div><div class="qc-em">${d.zone.emoji}</div><div class="qr-code-box" id="anim-qrbox"></div><div class="qr-timer"><span id="anim-qt">${Math.floor(d.expiresIn/60)}:${String(d.expiresIn%60).padStart(2,'0')}</span><span class="qr-tbar"><span class="qr-tfill" id="anim-qf" style="width:${(d.expiresIn/300)*100}%"></span></span></div></div>`;
+        try{new QRCode(document.getElementById('anim-qrbox'),{text:d.qrData,width:128,height:128,colorDark:'#1a3a8a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch{}
+        let s=d.expiresIn;
+        const tick=setInterval(()=>{s--;if(s<=0){clearInterval(tick);loadAnimatorDash(zoneId);return;}const qt=document.getElementById('anim-qt');const qf=document.getElementById('anim-qf');if(qt)qt.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;if(qf)qf.style.width=`${(s/300)*100}%`;},1000);
       }
     }
   }catch{}
@@ -959,19 +930,42 @@ async function loadAnimatorDash(zoneId){
 async function loadExhibitorDash(zoneId){
   try{
     const r=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()});
-    if(r.ok){
-      const{exhibitors,stats}=await r.json();
-      document.getElementById('exhibitor-stats').innerHTML=`
-        <div class="zone-stat-card"><div class="ze">👥</div><div class="zn">Látogatók</div><div class="zv">${stats.visitors||0}</div><div class="zl">a zónádban</div></div>
-        <div class="zone-stat-card"><div class="ze">📖</div><div class="zn">Pecsétek</div><div class="zv">${stats.stamps||0}</div><div class="zl">begyűjtve</div></div>
-        <div class="zone-stat-card"><div class="ze">🏢</div><div class="zn">Kiállítók</div><div class="zv">${exhibitors.length}</div><div class="zl">a zónában</div></div>`;
-      document.getElementById('exhibitor-info').innerHTML=exhibitors.map(ex=>`
-        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-          <h4 style="font-size:15px;font-weight:500;margin-bottom:4px">${ex.name}</h4>
-          ${ex.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:6px">${ex.description}</p>`:''}
-          ${ex.website_url?`<a href="${ex.website_url}" target="_blank" style="font-size:12px;color:var(--blue)">🌐 Weboldal</a>`:''}</div>`).join('');
+    if(r.ok){const{exhibitors,stats}=await r.json();
+      document.getElementById('exhibitor-stats').innerHTML=`<div class="zone-stat-card"><div class="ze">👥</div><div class="zv">${stats.visitors||0}</div><div class="zl">látogató</div></div><div class="zone-stat-card"><div class="ze">📖</div><div class="zv">${stats.stamps||0}</div><div class="zl">pecsét</div></div><div class="zone-stat-card"><div class="ze">🏢</div><div class="zv">${exhibitors.length}</div><div class="zl">kiállító</div></div>`;
     }
-  }catch{document.getElementById('exhibitor-info').innerHTML='<p style="font-size:13px;color:var(--muted)">Nem sikerült betölteni.</p>';}
+  }catch{}
+  // Saját QR
+  if(zoneId){
+    try{
+      const r=await fetch(`${API}/api/admin/qr/token/${zoneId}`,{headers:authH()});
+      if(r.ok){const d=await r.json();
+        const box=document.getElementById('exhibitor-qr-card');
+        if(box){box.innerHTML=`<div class="qr-card"><div class="qc-zone">${d.zone.name}</div><div class="qc-em">${d.zone.emoji}</div><div class="qr-code-box" id="ex-qrbox"></div><div class="qr-timer"><span>${d.expiresIn}mp</span></div></div>`;
+          try{new QRCode(document.getElementById('ex-qrbox'),{text:d.qrData,width:120,height:120,colorDark:'#1a3a8a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch{}
+        }
+      }
+    }catch{}
+  }
+  loadExhibitorContent();
+}
+
+async function loadExhibitorContent(){
+  const c=document.getElementById('exhibitor-content');if(!c)return;
+  try{
+    const r=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()});
+    if(!r.ok)throw new Error();
+    const{exhibitors}=await r.json();
+    if(!exhibitors.length){
+      c.innerHTML=`<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Még nincs kiállítói bejegyzésed.</p><button class="btn btn-p" onclick="showPage('p-exhibitors',null)">➕ Kiállító hozzáadása</button>`;
+      return;
+    }
+    c.innerHTML=exhibitors.map(ex=>`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><h4 style="font-size:14px;font-weight:500">${ex.name}</h4><button class="btn btn-o btn-xs" onclick="editExhibitorFromDash(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️ Szerkesztés</button></div>${ex.description?`<p style="font-size:13px;color:var(--muted)">${ex.description}</p>`:''}</div>`).join('');
+  }catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+}
+
+function editExhibitorFromDash(ex){
+  showPage('p-exhibitors',null);
+  setTimeout(()=>editExhibitor(ex),100);
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
@@ -980,20 +974,25 @@ function showPage(id,el){
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.nl').forEach(l=>l.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={'p-dash':'Dashboard','p-festival':'Fesztivál','p-push':'Push üzenetek','p-dates':'Fontos dátumok','p-exhibitors':'Kiállítók','p-map':'Térkép','p-qr':'QR Tokenek','p-users':'Regisztráltak','p-security':'Biztonsági napló','p-settings':'Felhasználókezelés','p-animator':'Animátor nézet','p-exhibitor':'Kiállító nézet'};
+  const titles={'p-dash':'Dashboard','p-festival':'Fesztivál & QR','p-push':'Push üzenetek','p-dates':'Fontos dátumok','p-exhibitors':'Kiállítók','p-map':'Térkép','p-qr':'QR Tokenek','p-users':'Regisztráltak','p-security':'Biztonsági napló','p-settings':'Felhasználókezelés','p-animator':'Animátor nézet','p-exhibitor':'Kiállító nézet'};
   document.getElementById('page-title').textContent=titles[id]||'';
   if(id==='p-dates')loadDates();
   if(id==='p-exhibitors')loadExhibitors();
-  if(id==='p-qr')loadTokens();
+  if(id==='p-qr')loadQRCodes();
   if(id==='p-push')loadPushHistory();
-  if(id==='p-users'){loadLiveUsers();}
+  if(id==='p-users')loadLiveUsers();
   if(id==='p-security')loadSecurityLog();
-  if(id==='p-map')loadCurrentMap();
+  if(id==='p-map')loadMapHistory();
   if(id==='p-settings')loadAdminUsers();
+  if(id==='p-festival')loadQRZoneToggles();
 }
 
 function updateClock(){const t=document.getElementById('tb-time');if(t)t.textContent=new Date().toLocaleTimeString('hu-HU');}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// Auto nézet detektálás betöltéskor
+applyView(preferredView);
+window.addEventListener('resize',()=>{if(preferredView==='auto')applyView('auto');});
 </script>
 </body>
 </html>

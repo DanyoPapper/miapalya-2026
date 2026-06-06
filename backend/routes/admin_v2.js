@@ -1,7 +1,6 @@
 const router       = require('express').Router();
 const requireAdmin = require('../middleware/auth');
 const db           = require('../config/database');
-const logger       = require('../utils/logger');
 const bcrypt       = require('bcrypt');
 
 router.use(requireAdmin);
@@ -14,22 +13,69 @@ router.post('/festival/toggle', async (req, res) => {
       "INSERT INTO festival_settings(key,value,updated_at) VALUES('festival_active',$1,NOW()) ON CONFLICT(key) DO UPDATE SET value=$1,updated_at=NOW()",
       [active ? 'true' : 'false']
     );
-    await logger.admin({ details: { action:'festival_toggle', active, by: req.admin.email } });
     res.json({ success: true, active });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
 router.get('/festival/status', async (_req, res) => {
   try {
-    const { rows } = await db.query("SELECT value FROM festival_settings WHERE key='festival_active'");
-    res.json({ active: rows[0]?.value !== 'false' });
+    const { rows } = await db.query(
+      "SELECT key, value FROM festival_settings WHERE key IN ('festival_active','qr_global_enabled')"
+    );
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    res.json({ active: s.festival_active !== 'false', qrEnabled: s.qr_global_enabled !== 'false' });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
+// ── QR globális kapcsoló ──────────────────────────────────────────────────────
+router.post('/qr/global', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    await db.query(
+      "INSERT INTO festival_settings(key,value,updated_at) VALUES('qr_global_enabled',$1,NOW()) ON CONFLICT(key) DO UPDATE SET value=$1,updated_at=NOW()",
+      [enabled ? 'true' : 'false']
+    );
+    res.json({ success: true, enabled });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
+// ── QR zóna kapcsoló ──────────────────────────────────────────────────────────
+router.post('/qr/zone/:zoneId', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    await db.query('UPDATE zones SET qr_enabled=$1 WHERE id=$2', [enabled, req.params.zoneId]);
+    res.json({ success: true, zoneId: req.params.zoneId, enabled });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
+// Zónák QR státuszával
+router.get('/qr/zones', async (_req, res) => {
+  try {
+    const { rows } = await db.query('SELECT id, name, emoji, active, qr_enabled FROM zones ORDER BY id');
+    res.json({ zones: rows });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
+// QR token lekérés + zóna státusz (animátornak/kiállítónak)
+router.get('/qr/token/:zoneId', async (req, res) => {
+  try {
+    const { generateToken, secondsUntilRotation } = require('../utils/totp');
+    const zoneId = req.params.zoneId;
+    const { rows } = await db.query('SELECT id, name, emoji, qr_enabled FROM zones WHERE id=$1', [zoneId]);
+    if (!rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
+    const zone = rows[0];
+    const token = generateToken(zoneId);
+    const expiresIn = secondsUntilRotation();
+    // QR adat formátuma: MAP2026:zona_id:TOKEN
+    const qrData = `MAP2026:${zoneId}:${token}`;
+    res.json({ zone, token, expiresIn, qrData, qrEnabled: zone.qr_enabled });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
 // ── Push üzenetek ─────────────────────────────────────────────────────────────
 router.get('/push', async (_req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM push_messages ORDER BY created_at DESC LIMIT 20');
+    const { rows } = await db.query('SELECT * FROM push_messages ORDER BY created_at DESC LIMIT 30');
     res.json({ messages: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
@@ -43,6 +89,22 @@ router.post('/push', async (req, res) => {
     const { rows } = await db.query(
       'INSERT INTO push_messages(message,duration_ms,active,created_by,expires_at) VALUES($1,$2,TRUE,$3,$4) RETURNING *',
       [message.trim(), duration_ms, req.admin.email, expiresAt]
+    );
+    res.json({ success: true, message: rows[0] });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
+// Újraküldés
+router.post('/push/:id/resend', async (req, res) => {
+  try {
+    const { rows: orig } = await db.query('SELECT * FROM push_messages WHERE id=$1', [req.params.id]);
+    if (!orig.length) return res.status(404).json({ error:'NOT_FOUND' });
+    const m = orig[0];
+    await db.query("UPDATE push_messages SET active=FALSE WHERE active=TRUE");
+    const expiresAt = m.duration_ms > 0 ? new Date(Date.now() + m.duration_ms) : null;
+    const { rows } = await db.query(
+      'INSERT INTO push_messages(message,duration_ms,active,created_by,expires_at) VALUES($1,$2,TRUE,$3,$4) RETURNING *',
+      [m.message, m.duration_ms, req.admin.email, expiresAt]
     );
     res.json({ success: true, message: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
@@ -105,6 +167,10 @@ router.post('/exhibitors', async (req, res) => {
   try {
     const { name, zone_id, description, youtube_url, website_url, logo_url } = req.body;
     if (!name) return res.status(400).json({ error:'MISSING_NAME' });
+    // Kiállító csak saját zónájába hozhat létre
+    if (req.admin.role === 'exhibitor' && req.admin.zoneId && zone_id !== req.admin.zoneId) {
+      return res.status(403).json({ error:'FORBIDDEN', message:'Csak a saját zónádba hozhatsz létre kiállítót.' });
+    }
     const { rows } = await db.query(
       'INSERT INTO exhibitors(name,zone_id,description,youtube_url,website_url,logo_url) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
       [name, zone_id||null, description||null, youtube_url||null, website_url||null, logo_url||null]
@@ -115,6 +181,13 @@ router.post('/exhibitors', async (req, res) => {
 
 router.put('/exhibitors/:id', async (req, res) => {
   try {
+    // Kiállító csak a saját zónájában lévőt szerkesztheti
+    if (req.admin.role === 'exhibitor') {
+      const { rows: ex } = await db.query('SELECT zone_id FROM exhibitors WHERE id=$1', [req.params.id]);
+      if (!ex.length || ex[0].zone_id !== req.admin.zoneId) {
+        return res.status(403).json({ error:'FORBIDDEN' });
+      }
+    }
     const { name, zone_id, description, youtube_url, website_url, logo_url, active } = req.body;
     const { rows } = await db.query(
       'UPDATE exhibitors SET name=$1,zone_id=$2,description=$3,youtube_url=$4,website_url=$5,logo_url=$6,active=$7 WHERE id=$8 RETURNING *',
@@ -125,6 +198,7 @@ router.put('/exhibitors/:id', async (req, res) => {
 });
 
 router.delete('/exhibitors/:id', async (req, res) => {
+  if (req.admin.role === 'exhibitor') return res.status(403).json({ error:'FORBIDDEN' });
   try {
     await db.query('DELETE FROM exhibitors WHERE id=$1', [req.params.id]);
     res.json({ success: true });
@@ -145,6 +219,13 @@ router.post('/map', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
+router.delete('/map/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM festival_map WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
 router.get('/map', async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM festival_map ORDER BY uploaded_at DESC');
@@ -162,64 +243,49 @@ router.get('/stats', async (_req, res) => {
       db.query("SELECT COUNT(*) FROM security_log WHERE event_type='token_expired' AND created_at>NOW()-INTERVAL '2 hours'"),
       db.query("SELECT COUNT(*) FROM sessions WHERE profile_id IS NOT NULL"),
     ]).then(rs => rs.map(r => r.rows));
-    res.json({
-      totalUsers: +u.count, totalStamps: +s.count,
-      blockedIPs: +b.count, suspiciousAttempts: +sus.count,
-      totalProfiles: +p.count,
-    });
+    res.json({ totalUsers:+u.count, totalStamps:+s.count, blockedIPs:+b.count, suspiciousAttempts:+sus.count, totalProfiles:+p.count });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Élő felhasználók (becenevekkel) ──────────────────────────────────────────
 router.get('/users/live', async (_req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT s.token, s.nickname, s.profile_id, s.created_at, s.last_seen,
               COUNT(st.id) AS stamp_count,
               CASE WHEN s.last_seen > NOW()-INTERVAL '30 minutes' THEN true ELSE false END AS is_active
-       FROM sessions s
-       LEFT JOIN stamps st ON s.id=st.session_id
-       GROUP BY s.id
-       ORDER BY s.last_seen DESC
-       LIMIT 200`
+       FROM sessions s LEFT JOIN stamps st ON s.id=st.session_id
+       GROUP BY s.id ORDER BY s.last_seen DESC NULLS LAST LIMIT 200`
     );
     res.json({ users: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Zóna látogatottsági statisztika (animátornak) ────────────────────────────
 router.get('/zones/stats', async (_req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT z.id, z.name, z.emoji,
+      `SELECT z.id, z.name, z.emoji, z.qr_enabled,
               COUNT(DISTINCT st.session_id) AS visitors,
               COUNT(st.id) AS total_stamps
-       FROM zones z
-       LEFT JOIN stamps st ON z.id=st.zone_id
-       GROUP BY z.id
-       ORDER BY visitors DESC`
+       FROM zones z LEFT JOIN stamps st ON z.id=st.zone_id
+       GROUP BY z.id ORDER BY visitors DESC`
     );
     res.json({ zones: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Kiállító statisztika (kiállítónak — saját zóna) ──────────────────────────
 router.get('/exhibitor/stats', async (req, res) => {
   try {
     const zoneId = req.admin.zoneId;
     if (!zoneId) return res.status(403).json({ error:'NO_ZONE' });
     const [{ rows: ex }, { rows: stats }] = await Promise.all([
       db.query('SELECT * FROM exhibitors WHERE zone_id=$1 AND active=TRUE', [zoneId]),
-      db.query(
-        `SELECT COUNT(DISTINCT session_id) AS visitors, COUNT(*) AS stamps
-         FROM stamps WHERE zone_id=$1`, [zoneId]
-      )
+      db.query('SELECT COUNT(DISTINCT session_id) AS visitors, COUNT(*) AS stamps FROM stamps WHERE zone_id=$1', [zoneId])
     ]);
     res.json({ exhibitors: ex, stats: stats[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Felhasználókezelés (admin hozza létre az animátor/kiállító fiókokat) ─────
+// ── Felhasználókezelés ────────────────────────────────────────────────────────
 router.get('/admin-users', async (req, res) => {
   if (req.admin.role !== 'admin') return res.status(403).json({ error:'FORBIDDEN' });
   try {
@@ -235,14 +301,12 @@ router.post('/admin-users', async (req, res) => {
   try {
     const { email, password, role, zone_id } = req.body;
     if (!email || !password || !role) return res.status(400).json({ error:'MISSING_FIELDS' });
-    if (!['admin','animator','exhibitor'].includes(role))
-      return res.status(400).json({ error:'INVALID_ROLE' });
+    if (!['admin','animator','exhibitor'].includes(role)) return res.status(400).json({ error:'INVALID_ROLE' });
     const hash = await bcrypt.hash(password, 12);
     const { rows } = await db.query(
       'INSERT INTO admin_users(email,password_hash,role,zone_id) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO UPDATE SET password_hash=$2,role=$3,zone_id=$4,active=TRUE RETURNING id,email,role,zone_id',
       [email.toLowerCase().trim(), hash, role, zone_id||null]
     );
-    await logger.admin({ details: { action:'create_user', email, role, by: req.admin.email } });
     res.json({ success: true, user: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
@@ -258,7 +322,9 @@ router.delete('/admin-users/:id', async (req, res) => {
 // ── Biztonsági napló ──────────────────────────────────────────────────────────
 router.get('/security-log', async (_req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM security_log ORDER BY created_at DESC LIMIT 100');
+    const { rows } = await db.query(
+      'SELECT * FROM security_log ORDER BY created_at DESC LIMIT 100'
+    );
     res.json({ events: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
@@ -277,7 +343,7 @@ router.post('/block-ip', async (req, res) => {
 router.get('/export', async (_req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT s.token, COALESCE(s.nickname,'–') as nickname, s.profile_id,
+      `SELECT s.token, COALESCE(s.nickname,'–') AS nickname, s.profile_id,
               s.created_at::date AS date, COUNT(st.id) AS stamp_count,
               STRING_AGG(st.zone_id,'|') AS zones
        FROM sessions s LEFT JOIN stamps st ON s.id=st.session_id
