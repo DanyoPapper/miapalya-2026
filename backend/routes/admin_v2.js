@@ -2,10 +2,11 @@ const router       = require('express').Router();
 const requireAdmin = require('../middleware/auth');
 const db           = require('../config/database');
 const bcrypt       = require('bcrypt');
+const { generateToken, secondsUntilRotation } = require('../utils/totp');
 
 router.use(requireAdmin);
 
-// ── Fesztivál kapcsoló ────────────────────────────────────────────────────────
+// ── Fesztivál státusz ─────────────────────────────────────────────────────────
 router.post('/festival/toggle', async (req, res) => {
   try {
     const { active } = req.body;
@@ -23,7 +24,10 @@ router.get('/festival/status', async (_req, res) => {
       "SELECT key, value FROM festival_settings WHERE key IN ('festival_active','qr_global_enabled')"
     );
     const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
-    res.json({ active: s.festival_active !== 'false', qrEnabled: s.qr_global_enabled !== 'false' });
+    res.json({
+      active:    s['festival_active']    !== 'false',
+      qrEnabled: s['qr_global_enabled']  !== 'false',
+    });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
@@ -43,36 +47,42 @@ router.post('/qr/global', async (req, res) => {
 router.post('/qr/zone/:zoneId', async (req, res) => {
   try {
     const { enabled } = req.body;
-    await db.query('UPDATE zones SET qr_enabled=$1 WHERE id=$2', [enabled, req.params.zoneId]);
-    res.json({ success: true, zoneId: req.params.zoneId, enabled });
-  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+    const { zoneId }  = req.params;
+    const r = await db.query(
+      'UPDATE zones SET qr_enabled=$1 WHERE id=$2 RETURNING id, qr_enabled',
+      [enabled === true || enabled === 'true', zoneId]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
+    res.json({ success: true, zoneId, enabled: r.rows[0].qr_enabled });
+  } catch(e) { console.error(e); res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// Zónák QR státuszával
 router.get('/qr/zones', async (_req, res) => {
   try {
-    const { rows } = await db.query('SELECT id, name, emoji, active, qr_enabled FROM zones ORDER BY id');
+    const { rows } = await db.query(
+      'SELECT id, name, emoji, active, qr_enabled FROM zones ORDER BY id'
+    );
     res.json({ zones: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// QR token lekérés + zóna státusz (animátornak/kiállítónak)
+// ── QR token lekérés egy zónához (animátor / kiállító) ───────────────────────
 router.get('/qr/token/:zoneId', async (req, res) => {
   try {
-    const { generateToken, secondsUntilRotation } = require('../utils/totp');
-    const zoneId = req.params.zoneId;
-    const { rows } = await db.query('SELECT id, name, emoji, qr_enabled FROM zones WHERE id=$1', [zoneId]);
+    const { zoneId } = req.params;
+    const { rows } = await db.query(
+      'SELECT id, name, emoji, qr_enabled FROM zones WHERE id=$1', [zoneId]
+    );
     if (!rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
-    const zone = rows[0];
-    const token = generateToken(zoneId);
+    const zone     = rows[0];
+    const token    = generateToken(zoneId);
     const expiresIn = secondsUntilRotation();
-    // QR adat formátuma: MAP2026:zona_id:TOKEN
-    const qrData = `MAP2026:${zoneId}:${token}`;
+    const qrData   = `MAP2026:${zoneId}:${token}`;
     res.json({ zone, token, expiresIn, qrData, qrEnabled: zone.qr_enabled });
-  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+  } catch(e) { console.error(e); res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Push üzenetek ─────────────────────────────────────────────────────────────
+// ── Push ──────────────────────────────────────────────────────────────────────
 router.get('/push', async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM push_messages ORDER BY created_at DESC LIMIT 30');
@@ -94,7 +104,6 @@ router.post('/push', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// Újraküldés
 router.post('/push/:id/resend', async (req, res) => {
   try {
     const { rows: orig } = await db.query('SELECT * FROM push_messages WHERE id=$1', [req.params.id]);
@@ -117,14 +126,13 @@ router.delete('/push/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Fontos dátumok ────────────────────────────────────────────────────────────
+// ── Dátumok ───────────────────────────────────────────────────────────────────
 router.get('/dates', async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM important_dates ORDER BY event_date ASC');
     res.json({ dates: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.post('/dates', async (req, res) => {
   try {
     const { title, event_date, location, description, category, link } = req.body;
@@ -136,7 +144,6 @@ router.post('/dates', async (req, res) => {
     res.json({ success: true, date: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.put('/dates/:id', async (req, res) => {
   try {
     const { title, event_date, location, description, category, link, active } = req.body;
@@ -147,7 +154,6 @@ router.put('/dates/:id', async (req, res) => {
     res.json({ success: true, date: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.delete('/dates/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM important_dates WHERE id=$1', [req.params.id]);
@@ -162,15 +168,12 @@ router.get('/exhibitors', async (_req, res) => {
     res.json({ exhibitors: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.post('/exhibitors', async (req, res) => {
   try {
     const { name, zone_id, description, youtube_url, website_url, logo_url } = req.body;
     if (!name) return res.status(400).json({ error:'MISSING_NAME' });
-    // Kiállító csak saját zónájába hozhat létre
-    if (req.admin.role === 'exhibitor' && req.admin.zoneId && zone_id !== req.admin.zoneId) {
-      return res.status(403).json({ error:'FORBIDDEN', message:'Csak a saját zónádba hozhatsz létre kiállítót.' });
-    }
+    if (req.admin.role === 'exhibitor' && req.admin.zoneId && zone_id !== req.admin.zoneId)
+      return res.status(403).json({ error:'FORBIDDEN' });
     const { rows } = await db.query(
       'INSERT INTO exhibitors(name,zone_id,description,youtube_url,website_url,logo_url) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
       [name, zone_id||null, description||null, youtube_url||null, website_url||null, logo_url||null]
@@ -178,15 +181,12 @@ router.post('/exhibitors', async (req, res) => {
     res.json({ success: true, exhibitor: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.put('/exhibitors/:id', async (req, res) => {
   try {
-    // Kiállító csak a saját zónájában lévőt szerkesztheti
     if (req.admin.role === 'exhibitor') {
       const { rows: ex } = await db.query('SELECT zone_id FROM exhibitors WHERE id=$1', [req.params.id]);
-      if (!ex.length || ex[0].zone_id !== req.admin.zoneId) {
+      if (!ex.length || ex[0].zone_id !== req.admin.zoneId)
         return res.status(403).json({ error:'FORBIDDEN' });
-      }
     }
     const { name, zone_id, description, youtube_url, website_url, logo_url, active } = req.body;
     const { rows } = await db.query(
@@ -196,7 +196,6 @@ router.put('/exhibitors/:id', async (req, res) => {
     res.json({ success: true, exhibitor: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.delete('/exhibitors/:id', async (req, res) => {
   if (req.admin.role === 'exhibitor') return res.status(403).json({ error:'FORBIDDEN' });
   try {
@@ -218,14 +217,12 @@ router.post('/map', async (req, res) => {
     res.json({ success: true, map: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.delete('/map/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM festival_map WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-
 router.get('/map', async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM festival_map ORDER BY uploaded_at DESC');
@@ -285,7 +282,7 @@ router.get('/exhibitor/stats', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-// ── Felhasználókezelés ────────────────────────────────────────────────────────
+// ── Admin felhasználók ────────────────────────────────────────────────────────
 router.get('/admin-users', async (req, res) => {
   if (req.admin.role !== 'admin') return res.status(403).json({ error:'FORBIDDEN' });
   try {
@@ -319,12 +316,19 @@ router.delete('/admin-users/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
+// Felhasználó feloldása
+router.post('/admin-users/:id/activate', async (req, res) => {
+  if (req.admin.role !== 'admin') return res.status(403).json({ error:'FORBIDDEN' });
+  try {
+    await db.query('UPDATE admin_users SET active=TRUE WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+});
+
 // ── Biztonsági napló ──────────────────────────────────────────────────────────
 router.get('/security-log', async (_req, res) => {
   try {
-    const { rows } = await db.query(
-      'SELECT * FROM security_log ORDER BY created_at DESC LIMIT 100'
-    );
+    const { rows } = await db.query('SELECT * FROM security_log ORDER BY created_at DESC LIMIT 100');
     res.json({ events: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
@@ -352,7 +356,7 @@ router.get('/export', async (_req, res) => {
     const csv = 'Token,Becenév,Profil,Dátum,Pecsétek,Zónák\n' +
       rows.map(r=>`${r.token},${r.nickname},${r.profile_id||''},${r.date},${r.stamp_count},${r.zones||''}`).join('\n');
     res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition','attachment; filename="miapálya_export.csv"');
+    res.setHeader('Content-Disposition','attachment; filename="export.csv"');
     res.send('\uFEFF'+csv);
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });

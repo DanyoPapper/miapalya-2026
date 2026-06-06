@@ -1,23 +1,49 @@
 const crypto = require('crypto');
-const WINDOW_MS = 5 * 60 * 1000;
-const TOKEN_LEN = 8;
 
-function generateToken(zoneId, windowOverride) {
-  const w = windowOverride ?? Math.floor(Date.now() / WINDOW_MS);
-  const secret = process.env.TOKEN_SECRET || 'dev-secret-CHANGE-IN-PRODUCTION';
-  return crypto.createHmac('sha256', secret)
-    .update(`${zoneId}:${w}`)
-    .digest('hex').toUpperCase().slice(0, TOKEN_LEN);
+const WINDOW_SECONDS = 300; // 5 perces ablak
+const SECRET = process.env.TOKEN_SECRET || 'miapalya2026defaultsecret';
+
+/**
+ * Aktuális időablak száma
+ */
+function currentWindow() {
+  return Math.floor(Date.now() / 1000 / WINDOW_SECONDS);
 }
 
-function validateToken(zoneId, submitted) {
-  const now = Math.floor(Date.now() / WINDOW_MS);
-  return [generateToken(zoneId, now), generateToken(zoneId, now - 1)]
-    .includes(submitted?.toUpperCase());
+/**
+ * Token generálás zónához (aktuális ablak)
+ */
+function generateToken(zoneId) {
+  const window = currentWindow();
+  const hash = crypto
+    .createHmac('sha256', SECRET)
+    .update(`${zoneId}:${window}`)
+    .digest('hex');
+  return hash.slice(0, 8).toUpperCase();
 }
 
+/**
+ * Token validálás — elfogadja az aktuális + előző ablakot (grace period)
+ */
+function validateToken(zoneId, token) {
+  if (!token) return false;
+  const w = currentWindow();
+  for (const offset of [0, -1]) {
+    const hash = crypto
+      .createHmac('sha256', SECRET)
+      .update(`${zoneId}:${w + offset}`)
+      .digest('hex');
+    if (hash.slice(0, 8).toUpperCase() === token.toUpperCase()) return true;
+  }
+  return false;
+}
+
+/**
+ * Hány másodperc van az ablak végéig
+ */
 function secondsUntilRotation() {
-  return Math.ceil((WINDOW_MS - (Date.now() % WINDOW_MS)) / 1000);
+  const elapsed = Math.floor(Date.now() / 1000) % WINDOW_SECONDS;
+  return WINDOW_SECONDS - elapsed;
 }
 
-module.exports = { generateToken, validateToken, secondsUntilRotation };
+module.exports = { generateToken, validateToken, secondsUntilRotation, WINDOW_SECONDS };
