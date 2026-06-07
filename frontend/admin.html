@@ -558,6 +558,10 @@ const API = window.location.hostname==='localhost'
   ? 'http://localhost:3000'
   : 'https://miapalya-2026-production.up.railway.app';
 
+let secLogPage = 0;
+const SEC_PAGE_SIZE = 10;
+let secLogAll = [];
+
 let jwt=null, currentRole=null, currentZoneId=null;
 let allUsers=[];
 let qrTimerId=null, qrSec=300;
@@ -794,26 +798,75 @@ function updateFestUI(active){
 }
 
 async function toggleQRGlobal(){
-  const enabled=document.getElementById('qr-global-tog').checked;
-  try{const r=await fetch(`${API}/api/admin/qr/global`,{method:'POST',headers:authH(),body:JSON.stringify({enabled})});
-    if(r.ok)showToast(enabled?'✅ Összes QR engedélyezve':'⛔ Összes QR letiltva');
-    else showToast('Szerver hiba');}
-  catch(e){console.error(e);showToast('Szerver hiba');}
+  const enabled = document.getElementById('qr-global-tog').checked;
+  try{
+    const r = await fetch(`${API}/api/admin/qr/global`, {
+      method:'POST', headers:authH(), body:JSON.stringify({enabled})
+    });
+    if(r.ok){
+      showToast(enabled ? '✅ Összes QR engedélyezve' : '⛔ Összes QR letiltva');
+      // Ha a QR oldalon vagyunk, frissítjük a kártyákat is
+      const qrGrid = document.getElementById('qr-grid');
+      if(qrGrid && qrGrid.children.length > 0) loadQRCodes();
+    } else {
+      const d = await r.json().catch(()=>({}));
+      showToast('Hiba: ' + (d.error||r.status));
+      // Visszaállítjuk a kapcsolót
+      document.getElementById('qr-global-tog').checked = !enabled;
+    }
+  }catch(e){
+    console.error('toggleQRGlobal error:', e);
+    showToast('Kapcsolódási hiba');
+    document.getElementById('qr-global-tog').checked = !enabled;
+  }
 }
 
 async function loadQRZoneToggles(){
-  const c=document.getElementById('qr-zone-toggles');if(!c)return;
-  try{const r=await fetch(`${API}/api/admin/qr/zones`,{headers:authH()});if(!r.ok)throw new Error();
-    const{zones}=await r.json();
-    c.innerHTML=zones.map(z=>`<div class="toggle-row" style="padding:10px 0;border-bottom:1px solid var(--border)"><div class="tr-info"><h3 style="font-size:13px">${z.emoji} ${z.name}</h3></div><label class="tog"><input type="checkbox" ${z.qr_enabled!==false?'checked':''} onchange="toggleZoneQR('${z.id}',this.checked)"><span class="tog-sl"></span></label></div>`).join('');}
-  catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba</p>';}
+  const c = document.getElementById('qr-zone-toggles'); if(!c) return;
+  c.innerHTML = '<p style="font-size:13px;color:var(--muted)">Betöltés...</p>';
+  try{
+    const r = await fetch(`${API}/api/admin/qr/zones`, {headers:authH()});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const{zones} = await r.json();
+    if(!zones || !zones.length){
+      c.innerHTML = '<p style="font-size:13px;color:var(--muted)">Nincs zóna az adatbázisban.</p>';
+      return;
+    }
+    c.innerHTML = zones.map(z=>`
+      <div class="toggle-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="tr-info"><h3 style="font-size:13px">${z.emoji||''} ${z.name}</h3></div>
+        <label class="tog">
+          <input type="checkbox" ${z.qr_enabled !== false ? 'checked' : ''}
+            onchange="toggleZoneQR('${z.id}', this.checked, this)">
+          <span class="tog-sl"></span>
+        </label>
+      </div>`).join('');
+  }catch(e){
+    console.error('loadQRZoneToggles error:', e);
+    c.innerHTML = '<p style="font-size:13px;color:var(--muted)">Betöltési hiba — <a href="#" onclick="loadQRZoneToggles()">újra</a></p>';
+  }
 }
 
-async function toggleZoneQR(zoneId,enabled){
-  try{const r=await fetch(`${API}/api/admin/qr/zone/${zoneId}`,{method:'POST',headers:authH(),body:JSON.stringify({enabled})});
-    if(r.ok)showToast(enabled?`✅ ${zoneId} QR on`:`⛔ ${zoneId} QR off`);
-    else{const d=await r.json();showToast('Hiba: '+JSON.stringify(d));}}
-  catch(e){console.error(e);showToast('Szerver hiba');}
+async function toggleZoneQR(zoneId, enabled, checkboxEl){
+  try{
+    const r = await fetch(`${API}/api/admin/qr/zone/${zoneId}`, {
+      method:'POST', headers:authH(), body:JSON.stringify({enabled})
+    });
+    if(r.ok){
+      showToast(enabled ? `✅ ${zoneId} QR bekapcsolva` : `⛔ ${zoneId} QR kikapcsolva`);
+      // Ha a QR oldalon vagyunk, frissítjük
+      const qrGrid = document.getElementById('qr-grid');
+      if(qrGrid && qrGrid.children.length > 0) loadQRCodes();
+    } else {
+      const d = await r.json().catch(()=>({}));
+      showToast('Hiba: ' + (d.error||r.status));
+      if(checkboxEl) checkboxEl.checked = !enabled;
+    }
+  }catch(e){
+    console.error('toggleZoneQR error:', e);
+    showToast('Kapcsolódási hiba');
+    if(checkboxEl) checkboxEl.checked = !enabled;
+  }
 }
 
 // ── QR KÓDOK ─────────────────────────────────────────────────────────────────
@@ -993,27 +1046,69 @@ async function deleteMap(id){if(!confirm('Biztosan?'))return;try{await fetch(`${
 
 // ── SECURITY LOG ──────────────────────────────────────────────────────────────
 async function loadSecLog(){
+  secLogPage = 0;
   const c=document.getElementById('sec-log');
-  try{const r=await fetch(`${API}/api/admin/security-log`,{headers:authH()});if(!r.ok)throw new Error();
+  c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltés...</p>';
+  try{
+    const r=await fetch(`${API}/api/admin/security-log`,{headers:authH()});
+    if(!r.ok) throw new Error();
     const{events}=await r.json();
-    if(!events.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs esemény.</p>';return;}
-    const cols={'stamp_ok':'#22c55e','token_expired':'#dc2626','rate_limit':'#dc2626','admin_action':'#1a3a8a','error':'#f97316'};
-    c.innerHTML=events.map(e=>{
-      let det={};try{det=typeof e.details==='object'?e.details:JSON.parse(e.details||'{}');}catch{}
-      const who=det.admin_email?`<strong style="color:var(--blue)">${det.admin_email}</strong> — `:'';
-      return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="width:8px;height:8px;border-radius:50%;background:${cols[e.event_type]||'#6b7280'};flex-shrink:0;margin-top:4px"></div><div><div style="font-size:13px">${who}${e.event_type}${det.action?' — '+det.action:''}</div><div style="font-size:11px;color:var(--muted)">${new Date(e.created_at).toLocaleTimeString('hu-HU')} ${e.ip_address||''}</div></div></div>`;
-    }).join('');}
-  catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+    secLogAll = events || [];
+    renderSecLog();
+  }catch{
+    c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';
+  }
+}
+
+function renderSecLog(){
+  const c=document.getElementById('sec-log');
+  if(!secLogAll.length){c.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs esemény.</p>';return;}
+  const total=secLogAll.length;
+  const totalPages=Math.ceil(total/SEC_PAGE_SIZE);
+  const pageItems=secLogAll.slice(secLogPage*SEC_PAGE_SIZE,(secLogPage+1)*SEC_PAGE_SIZE);
+  const cols={'stamp_ok':'#22c55e','token_expired':'#dc2626','rate_limit':'#dc2626','admin_action':'#1a3a8a','error':'#f97316'};
+  const rows=pageItems.map(e=>{
+    let det={};try{det=typeof e.details==='object'?e.details:JSON.parse(e.details||'{}');}catch{}
+    const who=det.admin_email?`<strong style="color:var(--blue)">${det.admin_email}</strong> — `:'';
+    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${cols[e.event_type]||'#6b7280'};flex-shrink:0;margin-top:4px"></div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px">${who}${e.event_type}${det.action?' — '+det.action:''}</div>
+      <div style="font-size:11px;color:var(--muted)">${new Date(e.created_at).toLocaleTimeString('hu-HU')} ${e.ip_address||''}</div></div>
+    </div>`;
+  }).join('');
+  const pager=totalPages>1?`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;border-top:1px solid var(--border);margin-top:4px">
+    <button class="btn bo bxs" onclick="if(secLogPage>0){secLogPage--;renderSecLog();}" ${secLogPage===0?'disabled':''}>← Előző</button>
+    <span style="font-size:12px;color:var(--muted)">${secLogPage+1} / ${totalPages} (${total} esemény)</span>
+    <button class="btn bo bxs" onclick="if(secLogPage<${totalPages-1}){secLogPage++;renderSecLog();}" ${secLogPage>=totalPages-1?'disabled':''}>Következő →</button>
+  </div>`:'';
+  c.innerHTML=rows+pager;
 }
 
 // ── ADMIN USERS ───────────────────────────────────────────────────────────────
 async function loadAdminUsers(){
   const c=document.getElementById('admin-users-list');
-  try{const r=await fetch(`${API}/api/admin/admin-users`,{headers:authH()});if(!r.ok)throw new Error();
+  try{
+    const r=await fetch(`${API}/api/admin/admin-users`,{headers:authH()});
+    if(!r.ok) throw new Error();
     const{users}=await r.json();
     const rl={admin:'🔑 Admin',animator:'🎪 Animátor',exhibitor:'🏢 Kiállító'};
-    c.innerHTML=`<table class="tbl"><thead><tr><th>E-mail</th><th>Szerepkör</th><th>Zóna</th><th>Státusz</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${u.email}</td><td><span class="badge bg-b">${rl[u.role]||u.role}</span></td><td style="font-size:12px">${u.zone_id||'–'}</td><td><span class="badge ${u.active?'bg-g':'bg-r'}">${u.active?'Aktív':'Letiltva'}</span></td><td style="display:flex;gap:4px">${!u.active?`<button class="btn bg2 bxs" onclick="activateUser('${u.id}')">Feloldás</button>`:''}${u.role!=='admin'?`<button class="btn bd bxs" onclick="disableUser('${u.id}')">Letiltás</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
-  catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+    c.innerHTML=`<div style="overflow-x:auto"><table class="tbl" style="table-layout:fixed;width:100%;min-width:500px">
+      <colgroup><col style="width:30%"><col style="width:18%"><col style="width:12%"><col style="width:12%"><col style="width:28%"></colgroup>
+      <thead><tr><th>E-mail</th><th>Szerepkör</th><th>Zóna</th><th>Státusz</th><th>Műveletek</th></tr></thead>
+      <tbody>${users.map(u=>`<tr>
+        <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${u.email}">${u.email}</td>
+        <td><span class="badge bg-b">${rl[u.role]||u.role}</span></td>
+        <td style="font-size:12px">${u.zone_id||'–'}</td>
+        <td><span class="badge ${u.active?'bg-g':'bg-r'}">${u.active?'Aktív':'Letiltva'}</span></td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${!u.active?`<button class="btn bg2 bxs" onclick="activateUser('${u.id}')">Feloldás</button>`:''}
+          ${u.role!=='admin'?`<button class="btn bd bxs" onclick="disableUser('${u.id}')">Letiltás</button>`:''}
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }catch{
+    c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';
+  }
 }
 function updateZF(){document.getElementById('nu-zone-wrap').style.display=document.getElementById('nu-role').value==='admin'?'none':'block';}
 async function createUser(){

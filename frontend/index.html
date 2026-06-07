@@ -711,10 +711,11 @@ function openZone(id){
 }
 
 // ── QR SCANNER — robusztus implementáció ─────────────────────────────────────
-// ── QR SCANNER ────────────────────────────────────────────────────────────────
+// ── QR SCANNER — iOS Safari kompatibilis ─────────────────────────────────────
 let qrCanvas = null;
 let qrCtx    = null;
 let qrVideo  = null;
+let qrPollId = null; // setInterval ID
 
 async function toggleQRScanner(){
   if(qrScanning){ stopQR(); return; }
@@ -728,7 +729,7 @@ async function toggleQRScanner(){
     });
   }catch(err){
     const msgs = {
-      NotAllowedError:  'Kamera hozzáférés megtagadva — engedélyezd a böngészőben!',
+      NotAllowedError:  'Kamera hozzáférés megtagadva — engedélyezd a böngésző beállításaiban!',
       NotFoundError:    'Nem található kamera ezen az eszközön.',
       NotReadableError: 'A kamera már más alkalmazás használja.',
     };
@@ -737,15 +738,20 @@ async function toggleQRScanner(){
     return;
   }
 
-  qrVideo = document.getElementById('qr-video');
-  qrVideo.srcObject = qrStream;
-  qrVideo.setAttribute('playsinline','true');
-  qrVideo.setAttribute('muted','true');
-
+  // Canvas egyszer létrehozzuk
   if(!qrCanvas){
     qrCanvas = document.createElement('canvas');
     qrCtx = qrCanvas.getContext('2d', { willReadFrequently: true });
   }
+
+  qrVideo = document.getElementById('qr-video');
+
+  // iOS Safari: kötelező attribútumok SRCOBJECT ELŐTT
+  qrVideo.setAttribute('autoplay', '');
+  qrVideo.setAttribute('playsinline', '');
+  qrVideo.setAttribute('muted', '');
+  qrVideo.muted = true;
+  qrVideo.srcObject = qrStream;
 
   wrap.style.display = 'block';
   btn.textContent = '⏹ Leállítás';
@@ -754,53 +760,54 @@ async function toggleQRScanner(){
   status.className = 'qr-status';
   qrScanning = true;
 
-  // Megvárjuk hogy a videó valóban játszik mielőtt scanelünk
-  qrVideo.oncanplay = () => {
-    qrVideo.play().then(() => {
-      qrAnimFrame = requestAnimationFrame(qrScanLoop);
-    }).catch(()=>{});
-  };
+  // iOS Safari megbízható mód: play() hívás + interval polling
+  // (oncanplay/onloadedmetadata nem mindig tüzel iOS-en)
+  try{ await qrVideo.play(); }catch(e){ /* autoplay engedélyezve lesz */ }
+
+  // 150ms interval — elég gyors + iOS-en is megbízható
+  qrPollId = setInterval(doQRScan, 150);
 }
 
-function qrScanLoop(){
+function doQRScan(){
   if(!qrScanning || !qrVideo) return;
 
-  // Csak akkor olvasunk ha tényleg van kép
-  if(qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA && qrVideo.videoWidth > 0){
-    const w = qrVideo.videoWidth;
-    const h = qrVideo.videoHeight;
+  // readyState: 4 = HAVE_ENOUGH_DATA, de 2+ is elegendő iOS-en
+  if(qrVideo.readyState < 2 || qrVideo.videoWidth === 0 || qrVideo.videoHeight === 0) return;
 
-    // Canvas méret csak ha változott
-    if(qrCanvas.width !== w) qrCanvas.width = w;
-    if(qrCanvas.height !== h) qrCanvas.height = h;
+  const w = qrVideo.videoWidth;
+  const h = qrVideo.videoHeight;
 
-    qrCtx.drawImage(qrVideo, 0, 0, w, h);
+  // Canvas csak ha méret változott
+  if(qrCanvas.width !== w)  qrCanvas.width  = w;
+  if(qrCanvas.height !== h) qrCanvas.height = h;
 
-    let imgData;
-    try{ imgData = qrCtx.getImageData(0, 0, w, h); }catch{ imgData = null; }
+  try{ qrCtx.drawImage(qrVideo, 0, 0, w, h); }catch{ return; }
 
-    if(imgData){
-      const code = jsQR(imgData.data, imgData.width, imgData.height, {
-        inversionAttempts: 'attemptBoth'
-      });
-      if(code && code.data){
-        if(navigator.vibrate) navigator.vibrate([40,20,40]);
-        stopQR();
-        processQRCode(code.data);
-        return; // nem hívunk újabb frame-et
-      }
-    }
+  let imgData;
+  try{ imgData = qrCtx.getImageData(0, 0, w, h); }catch{ return; }
+
+  const code = jsQR(imgData.data, imgData.width, imgData.height, {
+    inversionAttempts: 'attemptBoth'
+  });
+
+  if(code && code.data && code.data.length > 0){
+    if(navigator.vibrate) navigator.vibrate([40, 20, 40]);
+    stopQR();
+    processQRCode(code.data);
   }
-
-  // Következő frame
-  qrAnimFrame = requestAnimationFrame(qrScanLoop);
 }
 
 function stopQR(){
   qrScanning = false;
+  if(qrPollId){ clearInterval(qrPollId); qrPollId = null; }
   if(qrAnimFrame){ cancelAnimationFrame(qrAnimFrame); qrAnimFrame = null; }
-  if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
-  if(qrVideo){ qrVideo.srcObject = null; qrVideo.oncanplay = null; qrVideo = null; }
+  if(qrStream){ qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  if(qrVideo){
+    qrVideo.pause();
+    qrVideo.srcObject = null;
+    qrVideo.oncanplay = null;
+    qrVideo = null;
+  }
   const wrap = document.getElementById('qr-wrap');
   if(wrap) wrap.style.display = 'none';
   const btn = document.getElementById('collect-btn');
@@ -809,6 +816,7 @@ function stopQR(){
     btn.className   = 'collect-btn';
     btn.onclick     = toggleQRScanner;
   }
+}
 }
 
 async function processQRCode(data){
