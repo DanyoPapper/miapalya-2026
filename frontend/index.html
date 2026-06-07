@@ -48,11 +48,12 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
 .nick-input::placeholder{font-weight:400;font-size:16px;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,.4)}
 .nick-hint{font-size:12px;color:rgba(255,255,255,.45);margin-bottom:8px}
 .nick-err{font-size:13px;color:#ffb3b3;min-height:18px;margin-bottom:16px;text-align:center}
-.nick-btn{width:100%;background:var(--yellow);color:var(--blue);border:none;border-radius:var(--r);padding:16px 20px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3}
+.nick-btn{width:100%;background:var(--yellow);color:var(--blue);border:none;border-radius:var(--r);padding:14px 20px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;line-height:1.3}
 .nick-btn:active{transform:scale(.97)}
 .nick-btn:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.4);cursor:default}
-.nick-btn-txt{display:inline;word-break:break-word}
-.nick-name-preview{font-weight:900;word-break:break-word}
+.nick-btn-line1{font-size:15px;font-weight:800}
+.nick-btn-line2{font-size:16px;font-weight:900}
+.nick-name-preview{font-weight:900}
 
 /* QUIZ */
 #s-quiz{background:var(--bg)}
@@ -331,7 +332,8 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
       <p class="nick-err" id="nick-err"></p>
       <p class="nick-hint">Becenév · max. 20 karakter</p>
       <button class="nick-btn" id="nick-btn" onclick="submitNick()" disabled>
-        Szia, <span class="nick-name-preview" id="nick-preview">...</span>! Induljunk! →
+        <span class="nick-btn-line1">Szia, <span id="nick-preview">...</span>!</span>
+        <span class="nick-btn-line2">Induljunk! →</span>
       </button>
     </div>
   </div>
@@ -709,51 +711,41 @@ function openZone(id){
 }
 
 // ── QR SCANNER — robusztus implementáció ─────────────────────────────────────
+// ── QR SCANNER ────────────────────────────────────────────────────────────────
 let qrCanvas = null;
 let qrCtx    = null;
+let qrVideo  = null;
 
 async function toggleQRScanner(){
-  if(qrScanning){stopQR();return;}
-  const wrap  = document.getElementById('qr-wrap');
-  const status= document.getElementById('qr-status');
-  const btn   = document.getElementById('collect-btn');
+  if(qrScanning){ stopQR(); return; }
+  const wrap   = document.getElementById('qr-wrap');
+  const status = document.getElementById('qr-status');
+  const btn    = document.getElementById('collect-btn');
 
-  // HTTPS ellenőrzés (kamera csak HTTPS-en működik mobilon)
-  if(location.protocol !== 'https:' && location.hostname !== 'localhost'){
-    status.textContent='⚠️ Kamera csak HTTPS-en érhető el. Kérj segítséget az animátortól!';
-    status.className='qr-status err';
-    return;
-  }
-
-  // getUserMedia kamera kérés
   try{
-    const constraints = {
-      video: {
-        facingMode: { ideal: 'environment' }, // hátsó kamera
-        width:  { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false
-    };
-    qrStream = await navigator.mediaDevices.getUserMedia(constraints);
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' } }, audio:false
+    });
   }catch(err){
-    let msg = 'Kamera nem elérhető.';
-    if(err.name === 'NotAllowedError')  msg = 'Kamera hozzáférés megtagadva. Engedélyezd a böngésző beállításaiban!';
-    if(err.name === 'NotFoundError')    msg = 'Nem található kamera ezen az eszközön.';
-    if(err.name === 'NotReadableError') msg = 'A kamera már egy másik alkalmazás használja.';
-    status.textContent = msg;
+    const msgs = {
+      NotAllowedError:  'Kamera hozzáférés megtagadva — engedélyezd a böngészőben!',
+      NotFoundError:    'Nem található kamera ezen az eszközön.',
+      NotReadableError: 'A kamera már más alkalmazás használja.',
+    };
+    status.textContent = msgs[err.name] || 'Kamera nem elérhető.';
     status.className = 'qr-status err';
     return;
   }
 
-  const video = document.getElementById('qr-video');
-  video.srcObject = qrStream;
-  video.setAttribute('playsinline','');
-  video.setAttribute('autoplay','');
-  video.setAttribute('muted','');
+  qrVideo = document.getElementById('qr-video');
+  qrVideo.srcObject = qrStream;
+  qrVideo.setAttribute('playsinline','true');
+  qrVideo.setAttribute('muted','true');
 
-  // Canvas a frame-ek elemzéséhez
-  if(!qrCanvas){ qrCanvas = document.createElement('canvas'); qrCtx = qrCanvas.getContext('2d',{willReadFrequently:true}); }
+  if(!qrCanvas){
+    qrCanvas = document.createElement('canvas');
+    qrCtx = qrCanvas.getContext('2d', { willReadFrequently: true });
+  }
 
   wrap.style.display = 'block';
   btn.textContent = '⏹ Leállítás';
@@ -762,44 +754,55 @@ async function toggleQRScanner(){
   status.className = 'qr-status';
   qrScanning = true;
 
-  // Várjuk meg hogy a videó elindul
-  video.onloadedmetadata = () => { video.play().catch(()=>{}); };
-
-  // Polling interval (requestAnimationFrame helyett — mobilon megbízhatóbb)
-  qrAnimFrame = setInterval(doScanTick, 200);
+  // Megvárjuk hogy a videó valóban játszik mielőtt scanelünk
+  qrVideo.oncanplay = () => {
+    qrVideo.play().then(() => {
+      qrAnimFrame = requestAnimationFrame(qrScanLoop);
+    }).catch(()=>{});
+  };
 }
 
-function doScanTick(){
-  if(!qrScanning) return;
-  const video = document.getElementById('qr-video');
-  if(!video || video.readyState < 2 || video.videoWidth === 0) return;
+function qrScanLoop(){
+  if(!qrScanning || !qrVideo) return;
 
-  qrCanvas.width  = video.videoWidth;
-  qrCanvas.height = video.videoHeight;
-  qrCtx.drawImage(video, 0, 0);
+  // Csak akkor olvasunk ha tényleg van kép
+  if(qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA && qrVideo.videoWidth > 0){
+    const w = qrVideo.videoWidth;
+    const h = qrVideo.videoHeight;
 
-  let imageData;
-  try{ imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height); }
-  catch{ return; }
+    // Canvas méret csak ha változott
+    if(qrCanvas.width !== w) qrCanvas.width = w;
+    if(qrCanvas.height !== h) qrCanvas.height = h;
 
-  // jsQR — több inverzió próba a megbízhatóságért
-  const code = jsQR(imageData.data, imageData.width, imageData.height, {
-    inversionAttempts: 'attemptBoth'
-  });
+    qrCtx.drawImage(qrVideo, 0, 0, w, h);
 
-  if(code && code.data){
-    // Sikeres olvasás — haptic feedback ha elérhető
-    if(navigator.vibrate) navigator.vibrate([50,30,50]);
-    stopQR();
-    processQRCode(code.data);
+    let imgData;
+    try{ imgData = qrCtx.getImageData(0, 0, w, h); }catch{ imgData = null; }
+
+    if(imgData){
+      const code = jsQR(imgData.data, imgData.width, imgData.height, {
+        inversionAttempts: 'attemptBoth'
+      });
+      if(code && code.data){
+        if(navigator.vibrate) navigator.vibrate([40,20,40]);
+        stopQR();
+        processQRCode(code.data);
+        return; // nem hívunk újabb frame-et
+      }
+    }
   }
+
+  // Következő frame
+  qrAnimFrame = requestAnimationFrame(qrScanLoop);
 }
 
 function stopQR(){
   qrScanning = false;
-  if(qrAnimFrame){ clearInterval(qrAnimFrame); qrAnimFrame = null; }
+  if(qrAnimFrame){ cancelAnimationFrame(qrAnimFrame); qrAnimFrame = null; }
   if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
-  document.getElementById('qr-wrap').style.display = 'none';
+  if(qrVideo){ qrVideo.srcObject = null; qrVideo.oncanplay = null; qrVideo = null; }
+  const wrap = document.getElementById('qr-wrap');
+  if(wrap) wrap.style.display = 'none';
   const btn = document.getElementById('collect-btn');
   if(btn && !state.collectedStamps.includes(currentZoneId)){
     btn.textContent = '📷 QR kód beolvasása';

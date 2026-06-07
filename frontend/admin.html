@@ -500,24 +500,53 @@ input:checked+.tog-sl:before{transform:translateX(24px)}
     </div>
 
     <!-- ── KIÁLLÍTÓ NÉZET ─────────────────────────────────── -->
+    <!-- ── KIÁLLÍTÓ NÉZET ─────────────────────────────────── -->
     <div class="page" id="p-exhibitor">
-      <div class="alert al-g">🏢 Kiállító nézet</div>
+      <div class="alert al-g">🏢 Kiállító nézet — saját zónád statisztikái</div>
       <div class="three" id="exhibitor-stats-grid" style="margin-bottom:18px"></div>
+      <!-- QR is itt van -->
+      <h3 style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px">Zóna QR kód</h3>
+      <div style="display:flex;justify-content:flex-start">
+        <div style="max-width:220px;width:100%"><div id="ex-qr-wrap"></div></div>
+      </div>
     </div>
 
     <!-- ── KIÁLLÍTÓ TARTALOM ──────────────────────────────── -->
     <div class="page" id="p-ex-content">
+      <!-- Új kiállító létrehozás -->
       <div class="card">
-        <div class="ch"><h3>Saját kiállítói tartalom</h3><button class="btn bo bsm" onclick="loadExContent()">🔄</button></div>
-        <div class="cb" id="ex-content-area"></div>
+        <div class="ch"><h3 id="ex2-form-ttl">Új kiállító hozzáadása</h3></div>
+        <div class="cb">
+          <div class="form-row">
+            <div class="fg2" style="margin:0"><label>Cég neve *</label><input type="text" id="ex2-name" placeholder="pl. Saját Cégem"></div>
+            <div class="fg2" style="margin:0"><label>Zóna</label>
+              <select id="ex2-zone"><option value="">– Zóna nélkül –</option>
+                <option value="energia">⚡ Energia</option><option value="ipar">🤖 Ipar 4.0</option><option value="kiber">🔐 Kiber</option><option value="jarmu">🚗 Jármű</option><option value="feny">💡 Fény</option><option value="smart">🏠 Smart</option><option value="halo">📡 Hálózat</option><option value="print3d">🖨 3D</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg2" style="margin-top:12px"><label>Bemutatkozó szöveg</label><textarea id="ex2-desc" placeholder="Rövid bemutatkozás a diákoknak..."></textarea></div>
+          <div class="fg2"><label>YouTube embed link</label><input type="url" id="ex2-yt" placeholder="https://www.youtube.com/embed/VIDEO_ID"></div>
+          <div class="alert al-i" style="margin-bottom:12px">💡 Embed formátum: <code style="background:rgba(0,0,0,.06);padding:2px 5px;border-radius:4px">youtube.com/embed/VIDEO_ID</code></div>
+          <div class="fg2"><label>Weboldal</label><input type="url" id="ex2-web" placeholder="https://..."></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bp" id="ex2-sub-btn" onclick="submitExhibitor2()">➕ Hozzáadás</button>
+            <button class="btn bo" id="ex2-cancel-btn" onclick="cancelExEdit2()" style="display:none">Mégse</button>
+          </div>
+        </div>
+      </div>
+      <!-- Összes kiállító listája -->
+      <div class="card">
+        <div class="ch"><h3>Összes kiállító</h3><button class="btn bo bsm" onclick="loadExContent()">🔄</button></div>
+        <div id="ex-content-area"></div>
       </div>
     </div>
 
-    <!-- ── KIÁLLÍTÓ QR ────────────────────────────────────── -->
+    <!-- ── KIÁLLÍTÓ QR (külön fül) ────────────────────────── -->
     <div class="page" id="p-ex-qr">
-      <div class="alert al-g">QR kód — a diákok ezt olvassák be a pecséted begyűjtéséhez.</div>
+      <div class="alert al-g">📱 QR kód — a diákok ezt olvassák be a pecséted begyűjtéséhez.</div>
       <div style="display:flex;justify-content:center;margin-top:8px">
-        <div style="max-width:220px;width:100%"><div id="ex-qr-wrap"></div></div>
+        <div style="max-width:220px;width:100%"><div id="ex-qr-wrap2"></div></div>
       </div>
     </div>
 
@@ -691,6 +720,7 @@ function navTo(pageId){
   if(pageId==='p-map')loadMapHistory();
   if(pageId==='p-settings')loadAdminUsers();
   if(pageId==='p-festival'){loadFestStatus();loadQRZoneToggles();}
+  if(pageId==='p-exhibitor')loadExhibitorDash(currentZoneId);
   if(pageId==='p-ex-content')loadExContent();
   if(pageId==='p-ex-qr')loadExQR();
 }
@@ -733,7 +763,14 @@ async function loadLiveUsers(){
 function renderUsersTable(users){
   const tb=document.getElementById('users-tbody');if(!tb)return;
   if(!users.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nincs adat.</td></tr>';return;}
-  tb.innerHTML=users.map(u=>`<tr><td><strong>${u.nickname||'–'}</strong></td><td><code style="font-size:11px;background:var(--bg);padding:2px 5px;border-radius:4px">${u.token}</code></td><td><strong>${u.stamp_count}</strong>/8</td><td style="font-size:12px">${u.profile_id||'–'}</td><td><span class="badge ${u.is_active?'bg-g':'bg-n'}">${u.is_active?'Aktív':'Inaktív'}</span></td></tr>`).join('');
+  tb.innerHTML=users.map(u=>`
+    <tr>
+      <td><strong>${u.nickname||'–'}</strong></td>
+      <td><code style="font-size:11px;background:var(--bg);padding:2px 5px;border-radius:4px">${u.token}</code></td>
+      <td><strong>${u.stamp_count}</strong>/8</td>
+      <td style="font-size:12px">${u.profile_id||'–'}</td>
+      <td><span class="badge ${u.is_active?'bg-g':'bg-n'}">${u.is_active?'Aktív':'Inaktív'}</span></td>
+    </tr>`).join('');
 }
 function filterUsers(){const q=document.getElementById('user-search').value.toLowerCase();renderUsersTable(allUsers.filter(u=>(u.nickname||'').toLowerCase().includes(q)||(u.token||'').toLowerCase().includes(q)));}
 function exportCSV(){if(!allUsers.length){showToast('Nincs adat');return;}const csv='Becenév,Token,Pecsét,Profil\n'+allUsers.map(u=>`${u.nickname||''},${u.token},${u.stamp_count},${u.profile_id||''}`).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='export.csv';a.click();}
@@ -782,37 +819,84 @@ async function toggleZoneQR(zoneId,enabled){
 // ── QR KÓDOK ─────────────────────────────────────────────────────────────────
 async function loadQRCodes(){
   const g=document.getElementById('qr-grid');if(!g)return;
-  if(qrTimerId)clearInterval(qrTimerId);
-  try{const r=await fetch(`${API}/api/tokens/current`,{headers:authH()});if(!r.ok)throw new Error();
-    const{tokens,rotationSeconds}=await r.json();
-    qrSec=rotationSeconds;
+  // Timer leállítás
+  if(qrTimerId){clearInterval(qrTimerId);qrTimerId=null;}
+
+  try{
+    // Párhuzamosan kérjük le a tokeneket és a zóna státuszokat
+    const [tokRes, zoneRes] = await Promise.all([
+      fetch(`${API}/api/tokens/current`,{headers:authH()}),
+      fetch(`${API}/api/admin/qr/zones`,{headers:authH()})
+    ]);
+    if(!tokRes.ok) throw new Error('token fetch failed');
+    const {tokens, rotationSeconds} = await tokRes.json();
+    const zoneMap = {};
+    if(zoneRes.ok){
+      const {zones} = await zoneRes.json();
+      zones.forEach(z=>{ zoneMap[z.id]=z.qr_enabled; });
+    }
+
+    qrSec = rotationSeconds;
     g.innerHTML='';
+
     tokens.forEach(t=>{
-      const div=document.createElement('div');div.className='qr-card';div.id=`qc-${t.zoneId}`;
-      div.innerHTML=`<div class="qc-zone">${t.zoneName}</div><div class="qc-em">${t.emoji}</div><div class="qr-box" id="qrbox-${t.zoneId}"></div><div class="qr-timer"><span id="qt-${t.zoneId}">–</span><span class="qr-bar"><span class="qr-fill" id="qf-${t.zoneId}" style="width:${(t.expiresIn/300)*100}%"></span></span></div>`;
+      const enabled = zoneMap[t.zoneId] !== false; // default: be
+      const div=document.createElement('div');
+      div.className='qr-card';
+      div.id=`qc-${t.zoneId}`;
+      div.innerHTML=`
+        <div class="qc-zone">${t.zoneName}</div>
+        <div class="qc-em">${t.emoji}</div>
+        <div class="qr-box" id="qrbox-${t.zoneId}"></div>
+        <div class="qr-timer">
+          <span id="qt-${t.zoneId}">–</span>
+          <span class="qr-bar"><span class="qr-fill" id="qf-${t.zoneId}" style="width:${(rotationSeconds/300)*100}%"></span></span>
+        </div>
+        ${!enabled ? '<div class="qr-dis-ov">🚫 Zóna kikapcsolva</div>' : ''}
+      `;
       g.appendChild(div);
-      renderQRCode(`qrbox-${t.zoneId}`, t.qrData);
+
+      if(enabled){
+        renderQRCode(`qrbox-${t.zoneId}`, t.qrData);
+      } else {
+        const box=document.getElementById(`qrbox-${t.zoneId}`);
+        if(box) box.innerHTML='<div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:8px;font-size:32px">🚫</div>';
+      }
     });
-    // timer
+
+    // Timer init
+    const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    tokens.forEach(t=>{
+      const qt=document.getElementById(`qt-${t.zoneId}`);
+      if(qt) qt.textContent=fmt(qrSec);
+    });
+
+    // Timer tick
     qrTimerId=setInterval(()=>{
       qrSec--;
-      if(qrSec<=0){loadQRCodes();return;}
+      if(qrSec<=0){ loadQRCodes(); return; }
       tokens.forEach(t=>{
-        const qt=document.getElementById(`qt-${t.zoneId}`);const qf=document.getElementById(`qf-${t.zoneId}`);
-        if(qt)qt.textContent=`${Math.floor(qrSec/60)}:${String(qrSec%60).padStart(2,'0')}`;
-        if(qf)qf.style.width=`${(qrSec/300)*100}%`;
+        const qt=document.getElementById(`qt-${t.zoneId}`);
+        const qf=document.getElementById(`qf-${t.zoneId}`);
+        if(qt) qt.textContent=fmt(qrSec);
+        if(qf) qf.style.width=`${(qrSec/300)*100}%`;
       });
     },1000);
-    // init timer display
-    tokens.forEach(t=>{const qt=document.getElementById(`qt-${t.zoneId}`);if(qt)qt.textContent=`${Math.floor(qrSec/60)}:${String(qrSec%60).padStart(2,'0')}`;});
-  }catch(e){console.error(e);g.innerHTML='<p style="font-size:13px;color:var(--muted)">Hiba — ellenőrizd a JWT tokent.</p>';}
+
+  }catch(e){
+    console.error(e);
+    g.innerHTML='<p style="font-size:13px;color:var(--muted)">Hiba — próbáld újra.</p>';
+  }
 }
 
 function renderQRCode(containerId, data){
   const el=document.getElementById(containerId);if(!el)return;
   el.innerHTML='';
-  try{ new QRCode(el,{text:data,width:130,height:130,colorDark:'#1a3a8a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); }
-  catch(e){ el.innerHTML=`<p style="font-size:10px;color:var(--muted);padding:4px">${data}</p>`; }
+  try{
+    new QRCode(el,{text:data,width:130,height:130,colorDark:'#1a3a8a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  }catch(e){
+    el.innerHTML=`<p style="font-size:10px;color:var(--muted);padding:4px;word-break:break-all">${data}</p>`;
+  }
 }
 
 // ── PUSH ──────────────────────────────────────────────────────────────────────
@@ -956,52 +1040,161 @@ async function loadAnimatorDash(zoneId){
 
 async function loadSingleQR(containerId, zoneId, withTimer){
   const box=document.getElementById(containerId);if(!box)return;
+  // Korábbi timer leállítása
+  if(box._timerID){ clearInterval(box._timerID); box._timerID=null; }
   try{
     const r=await fetch(`${API}/api/admin/qr/token/${zoneId}`,{headers:authH()});
-    if(!r.ok)throw new Error();
+    if(!r.ok) throw new Error();
     const d=await r.json();
-    box.innerHTML=`<div class="qr-card"><div class="qc-zone">${d.zone.name}</div><div class="qc-em">${d.zone.emoji}</div><div class="qr-box" id="${containerId}-qrbox"></div>${withTimer?`<div class="qr-timer"><span id="${containerId}-sec">–</span><span class="qr-bar"><span class="qr-fill" id="${containerId}-fill" style="width:${(d.expiresIn/300)*100}%"></span></span></div>`:'<div class="qr-timer" id="'+containerId+'-sec">'+d.expiresIn+'mp múlva vált</div>'}</div>`;
-    renderQRCode(`${containerId}-qrbox`, d.qrData);
+    const enabled = d.qrEnabled !== false;
+
+    const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    box.innerHTML=`
+      <div class="qr-card">
+        <div class="qc-zone">${d.zone.name}</div>
+        <div class="qc-em">${d.zone.emoji}</div>
+        <div class="qr-box" id="${containerId}-qrbox"></div>
+        <div class="qr-timer">
+          <span id="${containerId}-sec">${fmt(d.expiresIn)}</span>
+          <span class="qr-bar"><span class="qr-fill" id="${containerId}-fill" style="width:${(d.expiresIn/300)*100}%"></span></span>
+        </div>
+        ${!enabled ? '<div class="qr-dis-ov">🚫 Zóna kikapcsolva</div>' : ''}
+      </div>`;
+
+    if(enabled){
+      renderQRCode(`${containerId}-qrbox`, d.qrData);
+    } else {
+      const qb=document.getElementById(`${containerId}-qrbox`);
+      if(qb) qb.innerHTML='<div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:8px;font-size:32px">🚫</div>';
+    }
+
     if(withTimer){
       let s=d.expiresIn;
-      const tick=setInterval(()=>{
+      box._timerID=setInterval(()=>{
         s--;
-        if(s<=0){clearInterval(tick);loadSingleQR(containerId,zoneId,withTimer);return;}
-        const st=document.getElementById(`${containerId}-sec`);const sf=document.getElementById(`${containerId}-fill`);
-        if(st)st.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-        if(sf)sf.style.width=`${(s/300)*100}%`;
+        if(s<=0){ clearInterval(box._timerID); loadSingleQR(containerId,zoneId,withTimer); return; }
+        const st=document.getElementById(`${containerId}-sec`);
+        const sf=document.getElementById(`${containerId}-fill`);
+        if(st) st.textContent=fmt(s);
+        if(sf) sf.style.width=`${(s/300)*100}%`;
       },1000);
-      // init
-      const st=document.getElementById(`${containerId}-sec`);
-      if(st)st.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
     }
-  }catch(e){console.error(e);box.innerHTML='<p style="font-size:13px;color:var(--muted)">QR betöltési hiba.</p>';}
+  }catch(e){
+    console.error(e);
+    box.innerHTML='<p style="font-size:13px;color:var(--muted)">QR betöltési hiba.</p>';
+  }
 }
 
 // ── KIÁLLÍTÓ DASH ─────────────────────────────────────────────────────────────
 async function loadExhibitorDash(zoneId){
-  try{const r=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()});
-    if(r.ok){const{stats}=await r.json();
+  try{
+    const r=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()});
+    if(r.ok){
+      const{stats}=await r.json();
       const sg=document.getElementById('exhibitor-stats-grid');
-      if(sg)sg.innerHTML=`<div class="zsc"><div class="ze">👥</div><div class="zv">${stats.visitors||0}</div><div class="zl">látogató</div></div><div class="zsc"><div class="ze">📖</div><div class="zv">${stats.stamps||0}</div><div class="zl">pecsét</div></div><div class="zsc"><div class="ze">🏢</div><div class="zl">zónád</div><div style="font-size:13px;margin-top:4px">${ZM[zoneId]?.e||''} ${ZM[zoneId]?.n||zoneId||'–'}</div></div>`;
+      if(sg)sg.innerHTML=`
+        <div class="zsc"><div class="ze">👥</div><div class="zv">${stats.visitors||0}</div><div class="zl">látogató</div></div>
+        <div class="zsc"><div class="ze">📖</div><div class="zv">${stats.stamps||0}</div><div class="zl">pecsét</div></div>
+        <div class="zsc"><div class="ze">📍</div><div class="zl">zónád</div><div style="font-size:13px;margin-top:4px">${ZM[zoneId]?.e||''} ${ZM[zoneId]?.n||zoneId||'–'}</div></div>`;
     }
   }catch{}
+  // QR a kiállító főoldalon
+  if(zoneId) loadSingleQR('ex-qr-wrap', zoneId, true);
 }
+
+let editingEx2Id = null; // kiállító saját szerkesztő
 
 async function loadExContent(){
   const c=document.getElementById('ex-content-area');if(!c)return;
-  try{const r=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()});if(!r.ok)throw new Error();
+  try{
+    // Összes kiállítót lekérjük (public endpoint)
+    const r=await fetch(`${API}/api/public/exhibitors`);
+    if(!r.ok)throw new Error();
     const{exhibitors}=await r.json();
-    if(!exhibitors.length){c.innerHTML=`<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Még nincs kiállítói bejegyzésed.</p><button class="btn bp" onclick="navTo('p-exhibitors')">➕ Hozzáadás</button>`;return;}
-    c.innerHTML=exhibitors.map(ex=>`<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><h4 style="font-size:14px;font-weight:500">${ex.name}</h4><button class="btn bo bxs" onclick="editExAndNav(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️ Szerk.</button></div>${ex.description?`<p style="font-size:13px;color:var(--muted)">${ex.description}</p>`:''}</div>`).join('');}
-  catch{c.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
+
+    // Saját kiállítók (ahol a zóna egyezik)
+    const myExhibitors=await fetch(`${API}/api/admin/exhibitor/stats`,{headers:authH()})
+      .then(r=>r.ok?r.json():{exhibitors:[]})
+      .then(d=>d.exhibitors||[]);
+    const myIds=new Set(myExhibitors.map(e=>e.id));
+
+    if(!exhibitors.length){
+      c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Még nincs kiállító a rendszerben.</p>';
+      return;
+    }
+
+    c.innerHTML=exhibitors.map(ex=>{
+      const isMine=myIds.has(ex.id);
+      const zone=ZM[ex.zone_id];
+      return `<div class="ex-ad">
+        <div class="ex-ad-h">
+          <div class="ex-ad-i">
+            <h4>${ex.name} ${isMine?'<span class="badge bg-b" style="font-size:10px">Saját</span>':''}</h4>
+            <p>${zone?`${zone.e} ${zone.n}`:'–'}${ex.website_url?` · <a href="${ex.website_url}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</p>
+          </div>
+          <div style="display:flex;gap:4px">
+            ${isMine?`<button class="btn bo bxs" onclick="editEx2(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️ Szerk.</button>`:''}
+          </div>
+        </div>
+        ${ex.description?`<p style="padding:0 14px 11px;font-size:13px;color:var(--muted)">${ex.description}</p>`:''}
+      </div>`;
+    }).join('');
+
+  }catch(e){
+    console.error(e);
+    c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';
+  }
 }
 
-function editExAndNav(ex){navTo('p-exhibitors');setTimeout(()=>editEx(ex),100);}
+function editEx2(ex){
+  // Csak saját szerkesztése
+  editingEx2Id=ex.id;
+  document.getElementById('ex2-name').value=ex.name||'';
+  document.getElementById('ex2-zone').value=ex.zone_id||'';
+  document.getElementById('ex2-desc').value=ex.description||'';
+  document.getElementById('ex2-yt').value=ex.youtube_url||'';
+  document.getElementById('ex2-web').value=ex.website_url||'';
+  document.getElementById('ex2-form-ttl').textContent='Saját kiállító szerkesztése';
+  document.getElementById('ex2-sub-btn').textContent='💾 Mentés';
+  document.getElementById('ex2-cancel-btn').style.display='inline-flex';
+  document.getElementById('ex2-name').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelExEdit2(){
+  editingEx2Id=null;
+  ['ex2-name','ex2-desc','ex2-yt','ex2-web'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ex2-zone').value='';
+  document.getElementById('ex2-form-ttl').textContent='Új kiállító hozzáadása';
+  document.getElementById('ex2-sub-btn').textContent='➕ Hozzáadás';
+  document.getElementById('ex2-cancel-btn').style.display='none';
+}
+
+async function submitExhibitor2(){
+  const name=document.getElementById('ex2-name').value.trim();
+  if(!name){showToast('Add meg a cég nevét!');return;}
+  const data={name,zone_id:document.getElementById('ex2-zone').value||null,description:document.getElementById('ex2-desc').value,youtube_url:document.getElementById('ex2-yt').value||null,website_url:document.getElementById('ex2-web').value||null};
+  try{
+    let r;
+    if(editingEx2Id){
+      r=await fetch(`${API}/api/admin/exhibitors/${editingEx2Id}`,{method:'PUT',headers:authH(),body:JSON.stringify({...data,active:true})});
+    }else{
+      r=await fetch(`${API}/api/admin/exhibitors`,{method:'POST',headers:authH(),body:JSON.stringify(data)});
+    }
+    if(r.ok){showToast(editingEx2Id?'✅ Frissítve!':'✅ Hozzáadva!');cancelExEdit2();loadExContent();}
+    else showToast('Hiba a mentésnél');
+  }catch{showToast('Szerver hiba');}
+}
 
 function loadExQR(){
-  if(currentZoneId) loadSingleQR('ex-qr-wrap', currentZoneId, true);
-  else document.getElementById('ex-qr-wrap').innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs hozzárendelt zóna.</p>';
+  const wrap=document.getElementById('ex-qr-wrap2');
+  if(!wrap)return;
+  if(currentZoneId) loadSingleQR('ex-qr-wrap2', currentZoneId, true);
+  else wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs hozzárendelt zóna.</p>';
+}
+
+// p-exhibitor betöltésnél QR is töltődjön
+function loadExhibitorPage(){
+  loadExhibitorDash(currentZoneId);
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
