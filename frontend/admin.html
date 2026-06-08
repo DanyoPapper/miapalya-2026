@@ -415,7 +415,7 @@ input:checked+.tog-sl:before{transform:translateX(24px)}
       <div class="alert al-w">⏱ Tokenek <strong>5 percenként változnak</strong>. Diákok kamerával olvassák be.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h2 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">Aktív QR kódok</h2>
-        <button class="btn bp bsm" onclick="loadQRCodes()">🔄 Újragenerálás</button>
+        <button class="btn bp bsm" id="qr-regen-btn" onclick="regenQRCodes()">🔄 Újragenerálás</button>
       </div>
       <div id="qr-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px"></div>
     </div>
@@ -729,7 +729,15 @@ function navTo(pageId){
   if(pageId==='p-ex-qr')loadExQR();
 }
 
-function refreshAll(){loadStats();loadLiveUsers();loadFestStatus();showToast('🔄 Frissítve!');}
+function refreshAll(){
+  if(!jwt){ showToast('⚠️ Nincs bejelentkezés'); return; }
+  const btn = document.querySelector('.tb-refresh');
+  if(btn){ btn.textContent = '⏳'; btn.disabled = true; }
+  Promise.all([loadStats(), loadLiveUsers(), loadFestStatus()])
+    .then(()=>{ showToast('🔄 Frissítve!'); })
+    .catch(e=>{ console.error('refreshAll error:', e); showToast('⚠️ Frissítési hiba'); })
+    .finally(()=>{ if(btn){ btn.textContent = '🔄'; btn.disabled = false; } });
+}
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
 async function loadStats(){
@@ -870,6 +878,16 @@ async function toggleZoneQR(zoneId, enabled, checkboxEl){
 }
 
 // ── QR KÓDOK ─────────────────────────────────────────────────────────────────
+async function regenQRCodes(){
+  const btn = document.getElementById('qr-regen-btn');
+  if(btn){ btn.textContent = '⏳ Generálás...'; btn.disabled = true; }
+  // Timer leállítás
+  if(qrTimerId){ clearInterval(qrTimerId); qrTimerId = null; }
+  await loadQRCodes();
+  if(btn){ btn.textContent = '🔄 Újragenerálás'; btn.disabled = false; }
+  showToast('✅ QR kódok frissítve!');
+}
+
 async function loadQRCodes(){
   const g=document.getElementById('qr-grid');if(!g)return;
   if(qrTimerId){clearInterval(qrTimerId);qrTimerId=null;}

@@ -59,11 +59,18 @@ router.post('/qr/zone/:zoneId', async (req, res) => {
 
 router.get('/qr/zones', async (_req, res) => {
   try {
-    const { rows } = await db.query(
-      'SELECT id, name, emoji, active, qr_enabled FROM zones ORDER BY id'
-    );
+    // qr_enabled column esetleg hiányzik ha schema_v4 nem futott
+    let rows;
+    try {
+      const result = await db.query('SELECT id, name, emoji, active, qr_enabled FROM zones ORDER BY id');
+      rows = result.rows;
+    } catch(colErr) {
+      // Ha a qr_enabled column hiányzik, default TRUE-val töltjük
+      const result = await db.query('SELECT id, name, emoji, active FROM zones ORDER BY id');
+      rows = result.rows.map(r => ({ ...r, qr_enabled: true }));
+    }
     res.json({ zones: rows });
-  } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
+  } catch(e) { console.error(e); res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
 // ── QR token lekérés egy zónához (animátor / kiállító) ───────────────────────
