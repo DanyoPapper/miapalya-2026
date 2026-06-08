@@ -1,7 +1,7 @@
 const router       = require('express').Router();
 const requireAdmin = require('../middleware/auth');
 const db           = require('../config/database');
-const bcrypt       = require('bcrypt');
+const bcrypt       = require('bcryptjs');
 const { generateToken, secondsUntilRotation } = require('../utils/totp');
 
 router.use(requireAdmin);

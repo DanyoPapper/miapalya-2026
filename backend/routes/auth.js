@@ -2,7 +2,7 @@ const router = require('express').Router();
 const db     = require('../config/database');
 const crypto = require('crypto');
 const jwt    = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // ── Diák session regisztrálás ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
