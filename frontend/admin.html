@@ -415,7 +415,7 @@ input:checked+.tog-sl:before{transform:translateX(24px)}
       <div class="alert al-w">⏱ Tokenek <strong>5 percenként változnak</strong>. Diákok kamerával olvassák be.</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h2 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">Aktív QR kódok</h2>
-        <button class="btn bp bsm" id="qr-regen-btn" onclick="regenQRCodes()">🔄 Újragenerálás</button>
+        <button class="btn bp bsm" id="qr-regen-btn" onclick="regenQRCodes()">🔄 Frissítés</button>
       </div>
       <div id="qr-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px"></div>
     </div>
@@ -902,8 +902,7 @@ async function regenQRCodes(){
   if(qrTimerId){ clearInterval(qrTimerId); qrTimerId = null; }
   await loadQRCodes();
   if(btn){ btn.textContent = '🔄 Újragenerálás'; btn.disabled = false; }
-  showToast('✅ QR kódok frissítve!');
-}
+  showToast('✅ QR kódok frissítve!');}
 
 async function loadQRCodes(){
   const g=document.getElementById('qr-grid');if(!g)return;

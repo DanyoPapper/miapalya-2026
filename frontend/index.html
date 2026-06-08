@@ -947,6 +947,19 @@ function processDemoScan(data){
   const status = document.getElementById('qr-status');
   if(parts.length>=3 && parts[0]==='MAP2026'){
     const zoneId = parts[1].toLowerCase();
+
+    // Zóna egyezés ellenőrzés — csak az aktuális zóna QR kódja fogadható el
+    if(currentZoneId && zoneId !== currentZoneId){
+      status.textContent='Úgy tűnik, nem ehhez a zónához tartozó QR kódot olvastál be. Kérd az animátort!';
+      status.className='qr-status err';
+      setTimeout(()=>{
+        status.textContent='Próbáld újra.'; status.className='qr-status';
+        const btn=document.getElementById('collect-btn');
+        if(btn){ btn.textContent='📷 QR kód beolvasása'; btn.className='collect-btn'; btn.onclick=startQR; }
+      }, 3000);
+      return;
+    }
+
     if(state.collectedStamps.includes(zoneId)){
       status.textContent='Ebből a zónából már van pecséted!'; status.className='qr-status err'; return;
     }
