@@ -701,20 +701,25 @@ function openZone(id){
   const done=state.collectedStamps.includes(id);
   const btn=document.getElementById('collect-btn');
   const status=document.getElementById('qr-status');
+  const mw=document.getElementById('qr-manual-wrap');
+  const reader=document.getElementById('qr-reader');
+
+  // Leállítjuk a scannert ha fut
+  stopQR();
+  if(reader) reader.style.display='none';
+  if(mw) mw.style.display='none';
+
   if(done){
     btn.textContent='✅ Pecsét már begyűjtve!';
     btn.className='collect-btn done';
     btn.onclick=null;
-    status.textContent='';status.className='qr-status ok';
+    if(status){status.textContent='';status.className='qr-status ok';}
   }else{
     btn.textContent='📷 QR kód beolvasása';
     btn.className='collect-btn';
-    btn.onclick=toggleQRScanner;
-    status.textContent='Nyomd meg a gombot a QR kód beolvasásához';
-    status.className='qr-status';
+    btn.onclick=startQR;
+    if(status){status.textContent='Válassz beolvasási módot:';status.className='qr-status';}
   }
-  document.getElementById('qr-wrap').style.display='none';
-  stopQR();
   goTo('s-zone');
 }
 
