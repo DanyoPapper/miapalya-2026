@@ -387,28 +387,25 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
       <!-- QR SCANNER -->
       <p class="sl" style="margin-top:16px">Pecsét begyűjtése</p>
       <div id="qr-section">
-        <!-- Kamera nézet -->
-        <div class="qr-scanner-wrap" id="qr-wrap" style="display:none">
-          <video class="qr-video" id="qr-video" autoplay playsinline muted playsinline></video>
-          <div class="qr-frame">
-            <div class="qr-scan-line"></div>
-          </div>
-        </div>
-        <!-- Manuális bevitel fallback -->
+        <!-- html5-qrcode scanner konténer -->
+        <div id="qr-reader" style="display:none;width:100%;border-radius:var(--r);overflow:hidden"></div>
+        <!-- Manuális bevitel -->
         <div id="qr-manual-wrap" style="display:none;margin-top:8px">
-          <input id="qr-manual-input" type="text" placeholder="Írd be a kódot (pl. MAP2026:energia:AB12CD34)"
-            style="width:100%;padding:12px;border:2px solid var(--border);border-radius:var(--rs);font-size:14px;font-family:monospace;outline:none;margin-bottom:6px"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:8px">Kérd el az animátortól a kódot és írd be:</p>
+          <input id="qr-manual-input" type="text" placeholder="pl. AB12CD34"
+            style="width:100%;padding:14px;border:2px solid var(--border);border-radius:var(--rs);font-size:22px;font-family:monospace;font-weight:700;text-align:center;outline:none;margin-bottom:8px;letter-spacing:3px;text-transform:uppercase"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            maxlength="12" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitManualCode()">
           <button class="collect-btn" onclick="submitManualCode()" style="margin-top:0">
             ✅ Beküldés
           </button>
         </div>
-        <p class="qr-status" id="qr-status">Nyomd meg a gombot a QR kód beolvasásához</p>
+        <p class="qr-status" id="qr-status">Válassz beolvasási módot:</p>
         <button class="collect-btn" id="collect-btn" onclick="startQR()">
           📷 QR kód beolvasása
         </button>
-        <button class="btn-manual-code" id="btn-manual" onclick="showManualInput()" style="margin-top:8px;width:100%;background:none;border:1px solid var(--border);border-radius:var(--rs);padding:9px;font-size:12px;color:var(--muted);cursor:pointer">
-          ⌨️ Kézi kódbevitel
+        <button id="btn-manual" onclick="showManualInput()" style="margin-top:8px;width:100%;background:none;border:1.5px solid var(--border);border-radius:var(--rs);padding:12px;font-size:14px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif">
+          ⌨️ Kézi kódbevitel (animátortól kapott kód)
         </button>
       </div>
     </div>
@@ -721,133 +718,82 @@ function openZone(id){
   goTo('s-zone');
 }
 
-// ── QR SCANNER ───────────────────────────────────────────────────────────────
-// iOS Safari megbízható megoldás: ontimeupdate event + jsQR canvas scan
-// ontimeupdate iOS-on minden frame-nél tüzel, readyState check nélkül
-
-let qrCanvas = null;
-let qrCtx    = null;
-let qrVideo  = null;
-let qrPollId = null;
-let qrActive = false; // külön flag az ontimeupdate-hez
+// ── QR SCANNER — html5-qrcode library ───────────────────────────────────────
+let html5QrCode = null;
 
 async function startQR(){
-  if(qrScanning){ stopQR(); return; }
   if(state.collectedStamps.includes(currentZoneId)) return;
 
-  const wrap   = document.getElementById('qr-wrap');
   const status = document.getElementById('qr-status');
   const btn    = document.getElementById('collect-btn');
   const mw     = document.getElementById('qr-manual-wrap');
-  if(mw) mw.style.display = 'none';
+  const reader = document.getElementById('qr-reader');
 
-  // Kamera kérés
-  let stream;
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ ideal:'environment' } },
-      audio: false
-    });
-  }catch(err){
-    const msgs = { NotAllowedError:'Kamera hozzáférés megtagadva!', NotFoundError:'Nem található kamera.', NotReadableError:'A kamera más app használja.' };
-    status.textContent = msgs[err.name] || 'Kamera nem elérhető.';
-    status.className = 'qr-status err';
+  // Ha már fut, leállítjuk
+  if(html5QrCode && html5QrCode.isScanning){
+    try{ await html5QrCode.stop(); }catch(e){}
+    html5QrCode = null;
+    reader.style.display = 'none';
+    btn.textContent = '📷 QR kód beolvasása';
+    btn.className   = 'collect-btn';
+    status.textContent = 'Válassz beolvasási módot:';
+    status.className   = 'qr-status';
     return;
   }
 
-  qrStream  = stream;
-  qrScanning = true;
-  qrActive   = true;
+  if(mw) mw.style.display = 'none';
+  reader.style.display = 'block';
+  btn.textContent = '⏹ Scanner leállítása';
+  btn.className   = 'collect-btn scanning';
+  status.textContent = '📷 Tartsd a QR kódot a kamera elé...';
+  status.className   = 'qr-status';
 
-  // Canvas
-  if(!qrCanvas){
-    qrCanvas = document.createElement('canvas');
-    qrCtx    = qrCanvas.getContext('2d', { willReadFrequently: true });
-  }
+  // html5-qrcode inicializálás
+  html5QrCode = new Html5Qrcode('qr-reader');
 
-  // Video — iOS: attribútumok ELŐBB, srcObject UTÓBB
-  qrVideo = document.getElementById('qr-video');
-  qrVideo.setAttribute('autoplay', '');
-  qrVideo.setAttribute('playsinline', '');
-  qrVideo.setAttribute('muted', '');
-  qrVideo.muted = true;
-
-  // iOS megbízható scan trigger: ontimeupdate (minden lejátszott frame-nél tüzel)
-  qrVideo.ontimeupdate = function() {
-    if(!qrActive) return;
-    tryScanFrame();
+  const config = {
+    fps: 10,
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0,
+    supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
   };
 
-  qrVideo.srcObject = stream;
-  try{ await qrVideo.play(); }catch(e){}
-
-  // Fallback polling — nem iOS esetén
-  qrPollId = setInterval(tryScanFrame, 200);
-
-  wrap.style.display = 'block';
-  btn.textContent = '⏹ Leállítás';
-  btn.className   = 'collect-btn scanning';
-  btn.onclick     = startQR;
-  status.textContent = '📷 Tartsd a QR kódot a keretbe...';
-  status.className   = 'qr-status';
-}
-
-function tryScanFrame(){
-  if(!qrActive || !qrVideo) return;
-  const w = qrVideo.videoWidth;
-  const h = qrVideo.videoHeight;
-  if(!w || !h) return; // videó még nem kész
-
-  if(qrCanvas.width  !== w) qrCanvas.width  = w;
-  if(qrCanvas.height !== h) qrCanvas.height = h;
-
-  try{ qrCtx.drawImage(qrVideo, 0, 0, w, h); }catch(e){ return; }
-
-  let imgData;
-  try{ imgData = qrCtx.getImageData(0, 0, w, h); }catch(e){ return; }
-
-  // jsQR — elsődleges
-  if(typeof jsQR !== 'undefined'){
-    const code = jsQR(imgData.data, w, h, { inversionAttempts: 'attemptBoth' });
-    if(code && code.data){
-      qrFound(code.data);
-      return;
-    }
+  try{
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      config,
+      // Sikeres beolvasás
+      async (decodedText) => {
+        if(navigator.vibrate) navigator.vibrate([40,20,40]);
+        try{ await html5QrCode.stop(); }catch(e){}
+        html5QrCode = null;
+        reader.style.display = 'none';
+        btn.textContent = '📷 QR kód beolvasása';
+        btn.className   = 'collect-btn';
+        processQRCode(decodedText);
+      },
+      // Folyamatos keresés közben (nem hiba)
+      (errorMessage) => { /* figyelmen kívül */ }
+    );
+  }catch(err){
+    reader.style.display = 'none';
+    btn.textContent = '📷 QR kód beolvasása';
+    btn.className   = 'collect-btn';
+    status.textContent = 'Kamera nem elérhető — használd a kézi bevitelt!';
+    status.className   = 'qr-status err';
+    if(html5QrCode){ try{ await html5QrCode.stop(); }catch(e){} html5QrCode = null; }
+    showManualInput();
   }
-
-  // BarcodeDetector — másodlagos (async, nem blokkol)
-  if(typeof BarcodeDetector !== 'undefined'){
-    try{
-      const det = new BarcodeDetector({ formats:['qr_code'] });
-      det.detect(qrVideo).then(codes=>{
-        if(qrActive && codes && codes[0]){ qrFound(codes[0].rawValue); }
-      }).catch(()=>{});
-    }catch(e){}
-  }
-}
-
-function qrFound(data){
-  if(!qrActive) return; // már feldolgoztuk
-  qrActive = false;
-  if(navigator.vibrate) navigator.vibrate([40,20,40]);
-  stopQR();
-  processQRCode(data);
 }
 
 function stopQR(){
-  qrScanning = false;
-  qrActive   = false;
-  if(qrPollId){ clearInterval(qrPollId); qrPollId = null; }
-  if(qrAnimFrame){ cancelAnimationFrame(qrAnimFrame); qrAnimFrame = null; }
-  if(qrVideo){
-    qrVideo.ontimeupdate = null;
-    try{ qrVideo.pause(); }catch(e){}
-    qrVideo.srcObject = null;
-    qrVideo = null;
+  if(html5QrCode && html5QrCode.isScanning){
+    html5QrCode.stop().catch(()=>{});
+    html5QrCode = null;
   }
-  if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
-  const wrap = document.getElementById('qr-wrap');
-  if(wrap) wrap.style.display = 'none';
+  const reader = document.getElementById('qr-reader');
+  if(reader) reader.style.display = 'none';
   const btn = document.getElementById('collect-btn');
   if(btn && !state.collectedStamps.includes(currentZoneId)){
     btn.textContent = '📷 QR kód beolvasása';
@@ -859,18 +805,59 @@ function stopQR(){
 function showManualInput(){
   const w = document.getElementById('qr-manual-wrap');
   if(w) w.style.display = 'block';
+  stopQR();
   const inp = document.getElementById('qr-manual-input');
   if(inp){ inp.value = ''; inp.focus(); }
+  const status = document.getElementById('qr-status');
+  if(status){ status.textContent = 'Írd be az animátortól kapott kódot:'; status.className = 'qr-status'; }
 }
 
-function submitManualCode(){
+async function submitManualCode(){
   const inp    = document.getElementById('qr-manual-input');
   const status = document.getElementById('qr-status');
   if(!inp) return;
-  const val = inp.value.trim().toUpperCase();
-  if(!val){ status.textContent='Írd be a kódot!'; status.className='qr-status err'; return; }
+  const val = inp.value.trim().toUpperCase().replace(/\s/g,'');
+  if(val.length < 4){
+    status.textContent = 'Írd be a kódot!';
+    status.className   = 'qr-status err';
+    return;
+  }
   inp.value = '';
-  processQRCode(val);
+  status.textContent = '⏳ Ellenőrzés...';
+  status.className   = 'qr-status';
+
+  // Rövid token (csak a kód, zóna nélkül) → /api/stamps/manual
+  if(!val.includes(':') && state.sessionToken){
+    try{
+      const r = await fetch(`${API}/api/stamps/manual`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sessionToken: state.sessionToken, token: val })
+      });
+      const d = await r.json();
+      if(d.success){
+        state.collectedStamps = d.collectedStamps || state.collectedStamps;
+        // currentZoneId frissítése a kapott zónára
+        if(d.stamp && d.stamp.zoneId) currentZoneId = d.stamp.zoneId;
+        saveState();
+        const z = ZONES.find(x => x.id === currentZoneId) || ZONES[0];
+        showStampAnim(z);
+        const btn = document.getElementById('collect-btn');
+        if(btn){ btn.textContent='✅ Pecsét begyűjtve!'; btn.className='collect-btn done'; btn.onclick=null; }
+        status.textContent=''; status.className='qr-status ok';
+        const mw = document.getElementById('qr-manual-wrap');
+        if(mw) mw.style.display='none';
+        renderZones(); renderProfile(); renderMissions();
+        return;
+      } else {
+        status.textContent = d.message || 'Érvénytelen kód.';
+        status.className   = 'qr-status err';
+        return;
+      }
+    }catch(e){ /* offline → demo mód */ }
+  }
+
+  // Teljes QR adat formátum vagy offline demo
+  processQRCode(val.includes(':') ? val : `MAP2026:${currentZoneId}:${val}`);
 }
 
 function toggleQRScanner(){ startQR(); }
@@ -883,9 +870,9 @@ async function processQRCode(data){
   if(!state.sessionToken){ processDemoScan(data); return; }
 
   try{
-    const r = await fetch(`${API}/api/stamps/scan`,{
+    const r = await fetch(`${API}/api/stamps/scan`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ sessionToken:state.sessionToken, qrData:data })
+      body: JSON.stringify({ sessionToken: state.sessionToken, qrData: data })
     });
     const d = await r.json();
     if(d.success){
@@ -929,7 +916,7 @@ function processDemoScan(data){
     const mw=document.getElementById('qr-manual-wrap'); if(mw) mw.style.display='none';
     renderZones(); renderProfile(); renderMissions();
   }else{
-    status.textContent='Érvénytelen kód formátum.'; status.className='qr-status err';
+    status.textContent='Érvénytelen kód.'; status.className='qr-status err';
     setTimeout(()=>{
       status.textContent='Próbáld újra.'; status.className='qr-status';
       const btn=document.getElementById('collect-btn');
@@ -1134,7 +1121,7 @@ function showToast(msg){
 
 init();
 </script>
-<!-- jsQR — iOS Safari QR fallback library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+<!-- html5-qrcode — megbízható QR scanner minden platformon -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </body>
 </html>

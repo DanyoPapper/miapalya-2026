@@ -130,3 +130,43 @@ router.get('/:sessionToken', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── Manuális token beküldés (csak a 8 karakteres kód, zóna nélkül) ──────────
+router.post('/manual', stampLimiter, async (req, res) => {
+  const { sessionToken, token: manualToken } = req.body;
+  const ip = req.ip;
+
+  if(!manualToken || manualToken.length < 4) {
+    return res.status(400).json({ error: 'INVALID_TOKEN', message: 'Érvénytelen kód.' });
+  }
+
+  const cleanToken = manualToken.trim().toUpperCase();
+
+  // Végigpróbáljuk az összes zónát
+  const ZONES = ['energia','ipar','kiber','jarmu','feny','smart','halo','print3d'];
+  const { validateToken } = require('../utils/totp');
+
+  let foundZoneId = null;
+  for(const zoneId of ZONES) {
+    if(validateToken(zoneId, cleanToken)) {
+      foundZoneId = zoneId;
+      break;
+    }
+  }
+
+  if(!foundZoneId) {
+    await logger.blocked({ ip, token: cleanToken, reason: 'manual_invalid' });
+    return res.status(400).json({
+      error: 'TOKEN_EXPIRED',
+      message: 'Érvénytelen vagy lejárt kód. Kérd az animátortól az aktuális kódot!'
+    });
+  }
+
+  // A többi validálást a collectStamp végzi
+  return collectStamp(req, res, {
+    sessionToken,
+    zoneId: foundZoneId,
+    qrToken: cleanToken,
+    ip
+  });
+});

@@ -929,7 +929,7 @@ async function loadQRCodes(){
         <div class="qc-zone">${t.zoneName}</div>
         <div class="qc-em">${t.emoji}</div>
         <div class="qr-box" id="qrbox-${t.zoneId}"></div>
-        <div style="font-family:monospace;font-size:11px;color:#6b7280;margin:6px 0;word-break:break-all;text-align:center;background:#f8f8f6;border-radius:6px;padding:4px 6px">${t.token}</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:800;color:#1a3a8a;margin:8px 0;text-align:center;background:#eef2ff;border-radius:8px;padding:8px 10px;letter-spacing:3px">${t.token}</div>
         <div class="qr-timer">
           <span id="qt-${t.zoneId}">–</span>
           <span class="qr-bar"><span class="qr-fill" id="qf-${t.zoneId}" style="width:${(rotationSeconds/300)*100}%"></span></span>
@@ -1175,7 +1175,7 @@ async function loadSingleQR(containerId, zoneId, withTimer){
         <div class="qc-zone">${d.zone.name}</div>
         <div class="qc-em">${d.zone.emoji}</div>
         <div class="qr-box" id="${containerId}-qrbox"></div>
-        <div style="font-family:monospace;font-size:13px;font-weight:700;color:#1a3a8a;margin:8px 0;text-align:center;background:#eef2ff;border-radius:6px;padding:6px 8px;letter-spacing:2px">${d.token}</div>
+        <div style="font-family:monospace;font-size:22px;font-weight:900;color:#1a3a8a;margin:10px 0;text-align:center;background:#eef2ff;border-radius:8px;padding:10px 12px;letter-spacing:4px">${d.token}</div>
         <div class="qr-timer">
           <span id="${containerId}-sec">${fmt(d.expiresIn)}</span>
           <span class="qr-bar"><span class="qr-fill" id="${containerId}-fill" style="width:${(d.expiresIn/300)*100}%"></span></span>
