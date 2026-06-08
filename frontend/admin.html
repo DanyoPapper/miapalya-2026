@@ -872,28 +872,38 @@ async function toggleZoneQR(zoneId, enabled, checkboxEl){
 // ── QR KÓDOK ─────────────────────────────────────────────────────────────────
 async function loadQRCodes(){
   const g=document.getElementById('qr-grid');if(!g)return;
-  // Timer leállítás
   if(qrTimerId){clearInterval(qrTimerId);qrTimerId=null;}
+  g.innerHTML='<p style="font-size:13px;color:var(--muted)">Betöltés...</p>';
 
   try{
-    // Párhuzamosan kérjük le a tokeneket és a zóna státuszokat
-    const [tokRes, zoneRes] = await Promise.all([
-      fetch(`${API}/api/tokens/current`,{headers:authH()}),
-      fetch(`${API}/api/admin/qr/zones`,{headers:authH()})
-    ]);
-    if(!tokRes.ok) throw new Error('token fetch failed');
-    const {tokens, rotationSeconds} = await tokRes.json();
-    const zoneMap = {};
-    if(zoneRes.ok){
-      const {zones} = await zoneRes.json();
-      zones.forEach(z=>{ zoneMap[z.id]=z.qr_enabled; });
+    // Token lekérés
+    const tokRes = await fetch(`${API}/api/tokens/current`, {headers:authH()});
+    if(tokRes.status === 401){
+      g.innerHTML='<p style="font-size:13px;color:var(--red)">⚠️ Lejárt bejelentkezés — kérlek lépj be újra.</p>';
+      return;
     }
+    if(!tokRes.ok){
+      const errText = await tokRes.text().catch(()=>'');
+      g.innerHTML=`<p style="font-size:13px;color:var(--red)">Token hiba (${tokRes.status}): ${errText.slice(0,100)}</p>`;
+      return;
+    }
+    const {tokens, rotationSeconds} = await tokRes.json();
+
+    // Zóna státuszok (ha nem sikerül, nem baj — alapértelmezett: minden be)
+    const zoneMap = {};
+    try{
+      const zoneRes = await fetch(`${API}/api/admin/qr/zones`, {headers:authH()});
+      if(zoneRes.ok){
+        const {zones} = await zoneRes.json();
+        zones.forEach(z=>{ zoneMap[z.id]=z.qr_enabled; });
+      }
+    }catch(e){ console.warn('Zone status fetch failed:', e); }
 
     qrSec = rotationSeconds;
     g.innerHTML='';
 
     tokens.forEach(t=>{
-      const enabled = zoneMap[t.zoneId] !== false; // default: be
+      const enabled = zoneMap[t.zoneId] !== false;
       const div=document.createElement('div');
       div.className='qr-card';
       div.id=`qc-${t.zoneId}`;
@@ -908,7 +918,6 @@ async function loadQRCodes(){
         ${!enabled ? '<div class="qr-dis-ov">🚫 Zóna kikapcsolva</div>' : ''}
       `;
       g.appendChild(div);
-
       if(enabled){
         renderQRCode(`qrbox-${t.zoneId}`, t.qrData);
       } else {
@@ -917,14 +926,12 @@ async function loadQRCodes(){
       }
     });
 
-    // Timer init
     const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
     tokens.forEach(t=>{
       const qt=document.getElementById(`qt-${t.zoneId}`);
       if(qt) qt.textContent=fmt(qrSec);
     });
 
-    // Timer tick
     qrTimerId=setInterval(()=>{
       qrSec--;
       if(qrSec<=0){ loadQRCodes(); return; }
@@ -937,8 +944,8 @@ async function loadQRCodes(){
     },1000);
 
   }catch(e){
-    console.error(e);
-    g.innerHTML='<p style="font-size:13px;color:var(--muted)">Hiba — próbáld újra.</p>';
+    console.error('loadQRCodes error:', e);
+    g.innerHTML=`<p style="font-size:13px;color:var(--red)">Hiba: ${e.message} — <a href="#" onclick="loadQRCodes()">próbáld újra</a></p>`;
   }
 }
 
