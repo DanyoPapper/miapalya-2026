@@ -11,7 +11,7 @@ const adminRoutes   = require('./routes/admin');
 const adminV2Routes = require('./routes/admin_v2');
 const tokensRoutes  = require('./routes/tokens');
 const publicRoutes  = require('./routes/public');
-const { generalLimiter } = require('./middleware/rateLimit');
+const { generalLimiter, adminLimiter } = require('./middleware/rateLimit');
 const auditLog = require('./middleware/auditLog');
 const logger   = require('./utils/logger');
 
@@ -34,6 +34,8 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Audit log minden /api/admin hívásra
 app.use('/api/admin', auditLog);
 
+app.use('/api/admin',   adminLimiter);
+app.use('/api/tokens',  adminLimiter);
 app.use('/api/auth',    authRoutes);
 app.use('/api/stamps',  stampsRoutes);
 app.use('/api/profile', profileRoutes);

@@ -522,23 +522,62 @@ let qrScanning = false;
 let datesPollTimer = null;
 
 // ── BECENÉV SZŰRŐ ─────────────────────────────────────────────────────────────
-const BAD_WORDS = [
-  'kurva','fasz','szar','barom','geci','pöcs','segg','pina','ribanc','baszd',
-  'bassza','baszom','kibaszott','rohadék','rohadt','döglött','büdös','taknyos',
-  'idiota','hülye','retard','cigány','zsidó','buzis','buzi','meleg','negro',
-  'nigger','náci','hitler','fasiszta','terrorista'
+// Engedélyezett: magyar + latin betűk, számok, max 1 egymást követő szóköz
+// Tiltott: speciális karakterek, szitokszavak, rasszista kifejezések
+
+const NICK_BLACKLIST = [
+  // Magyar szitokszavak
+  'kurva','fasz','baszik','baszd','baszom','baszott','kibaszott','megbaszott',
+  'szar','szaros','szarja','geci','gecis','pöcs','pöcsöm','segg','segget',
+  'segger','pina','pinás','ribanc','ribancok','rohadék','rohadt','dögölj',
+  'ökör','bika','állat','idióta','hülye','takony','taknyos','köcsög',
+  'buzi','buzis','meleg','melegek','retard','retardált','spasztics',
+  // Rasszista / népcsoportot sértő (magyar)
+  'cigány','cigányok','cigányozom','büdöscigány','zsidó','zsidók','zsidózom',
+  'néger','négerek','fekete','kínai','mongol','mongolos',
+  // Angol szitokszavak
+  'fuck','fucking','fucked','fucker','shit','shitting','bitch','bastard',
+  'asshole','dickhead','cunt','whore','slut','cock','prick','pussy',
+  'wanker','twat','bollocks','motherfucker','motherfucking',
+  // Rasszista / angol
+  'nigger','nigga','negro','chink','spic','kike','faggot','dyke','retard',
+  'nazi','hitler','fascist',
+  // Egyéb
+  'terrorist','pedofil','pedophile',
 ];
 
 function filterNickname(v) {
-  if (!v || v.trim().length < 2) return 'Legalább 2 karakter szükséges!';
-  if (/^\d+$/.test(v.trim())) return 'A becenév nem állhat csak számokból!';
-  if (/[<>{}[\]\\\/]/.test(v)) return 'Érvénytelen karakter a becenevédben.';
-  const lower = v.toLowerCase();
-  for (const w of BAD_WORDS) {
-    if (lower.includes(w)) return 'Ez a becenév nem megfelelő. Kérj segítséget egy szervezőtől!';
+  const trimmed = v?.trim() || '';
+
+  // Hossz
+  if (trimmed.length < 2) return 'Legalább 2 karakter szükséges!';
+  if (trimmed.length > 20) return 'Maximum 20 karakter lehet!';
+
+  // Csak számok
+  if (/^\d+$/.test(trimmed)) return 'A becenév nem állhat csak számokból!';
+
+  // Engedélyezett karakterek: betű (unicode), szám, szóköz
+  if (/[^a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ0-9 ._-]/.test(trimmed)) {
+    return 'Csak betűket, számokat és szóközt használhatsz!';
   }
+
+  // Egymást követő szóközök
+  if (/  /.test(trimmed)) return 'Egymást követő szóközök nem engedélyezettek!';
+
+  // Szóközzel kezdés/végzés
+  if (trimmed !== v.trim()) return 'Szóközzel nem kezdődhet vagy végződhet!';
+
+  // Blacklist ellenőrzés
+  const lower = trimmed.toLowerCase().replace(/\s/g, '');
+  for (const word of NICK_BLACKLIST) {
+    if (lower.includes(word)) {
+      return 'Ez a becenév nem megfelelő. Kérj segítséget egy szervezőtől!';
+    }
+  }
+
   return null; // OK
 }
+
 
 // ── PERSISTENCE ────────────────────────────────────────────────────────────────
 function loadState(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):defaultState();}catch{return defaultState();}}
@@ -836,7 +875,7 @@ async function submitManualCode(){
     try{
       const r = await fetch(`${API}/api/stamps/manual`, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ sessionToken: state.sessionToken, token: val })
+        body: JSON.stringify({ sessionToken: state.sessionToken, token: val, currentZoneId })
       });
       const d = await r.json();
       if(d.success){
@@ -877,7 +916,7 @@ async function processQRCode(data){
   try{
     const r = await fetch(`${API}/api/stamps/scan`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ sessionToken: state.sessionToken, qrData: data })
+      body: JSON.stringify({ sessionToken: state.sessionToken, qrData: data, currentZoneId })
     });
     const d = await r.json();
     if(d.success){

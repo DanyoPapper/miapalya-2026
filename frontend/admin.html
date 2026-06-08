@@ -808,20 +808,37 @@ function updateFestUI(active){
 async function toggleQRGlobal(){
   const enabled = document.getElementById('qr-global-tog').checked;
   try{
+    // 1. Globális kapcsoló mentése a backenden
     const r = await fetch(`${API}/api/admin/qr/global`, {
       method:'POST', headers:authH(), body:JSON.stringify({enabled})
     });
-    if(r.ok){
-      showToast(enabled ? '✅ Összes QR engedélyezve' : '⛔ Összes QR letiltva');
-      // Ha a QR oldalon vagyunk, frissítjük a kártyákat is
-      const qrGrid = document.getElementById('qr-grid');
-      if(qrGrid && qrGrid.children.length > 0) loadQRCodes();
-    } else {
+    if(!r.ok){
       const d = await r.json().catch(()=>({}));
       showToast('Hiba: ' + (d.error||r.status));
-      // Visszaállítjuk a kapcsolót
       document.getElementById('qr-global-tog').checked = !enabled;
+      return;
     }
+
+    // 2. Összes egyedi zóna kapcsoló szinkronizálása
+    // a) Vizuálisan frissítjük az oldalon lévő kapcsolókat
+    document.querySelectorAll('#qr-zone-toggles input[type="checkbox"]').forEach(cb => {
+      cb.checked = enabled;
+    });
+
+    // b) Backend frissítés minden zónára
+    const zones = ['energia','ipar','kiber','jarmu','feny','smart','halo','print3d'];
+    await Promise.all(zones.map(zoneId =>
+      fetch(`${API}/api/admin/qr/zone/${zoneId}`, {
+        method:'POST', headers:authH(), body:JSON.stringify({enabled})
+      }).catch(()=>{})
+    ));
+
+    showToast(enabled ? '✅ Összes QR engedélyezve' : '⛔ Összes QR letiltva');
+
+    // c) QR kódok frissítése ha a grid látható
+    const qrGrid = document.getElementById('qr-grid');
+    if(qrGrid && qrGrid.children.length > 0) loadQRCodes();
+
   }catch(e){
     console.error('toggleQRGlobal error:', e);
     showToast('Kapcsolódási hiba');
