@@ -3,7 +3,7 @@
  * Használat: node scripts/create-admin.js admin@mee.hu "BiztonságosJelszó123!"
  */
 require('dotenv').config();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const db     = require('../backend/config/database');
 
 const [,, email, password, role = 'admin', zoneId = null] = process.argv;

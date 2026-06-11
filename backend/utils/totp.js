@@ -1,7 +1,13 @@
 const crypto = require('crypto');
 
 const WINDOW_SECONDS = 300; // 5 perces ablak
-const SECRET = process.env.TOKEN_SECRET || 'miapalya2026defaultsecret';
+
+// A QR tokenek titka KÖTELEZŐ — fallback nélkül, különben bárki hamisíthatna
+// érvényes tokent a repóban látható alapértelmezett titokból.
+const SECRET = process.env.TOKEN_SECRET;
+if (!SECRET) {
+  throw new Error('TOKEN_SECRET környezeti változó hiányzik! Állítsd be a Railway-en (Variables fül).');
+}
 
 /**
  * Aktuális időablak száma

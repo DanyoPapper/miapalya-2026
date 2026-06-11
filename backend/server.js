@@ -4,6 +4,16 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const path    = require('path');
 
+// ── Kötelező titkok ellenőrzése induláskor ───────────────────────────────────
+// Ha hiányoznak, a szerver el sem indul — így sosem fut le nem biztonságos
+// alapértelmezett titokkal (QR token hamisítás / JWT hamisítás ellen).
+for (const key of ['JWT_SECRET', 'TOKEN_SECRET']) {
+  if (!process.env[key]) {
+    console.error(`❌ HIBA: a(z) ${key} környezeti változó hiányzik! Állítsd be a Railway Variables fülön.`);
+    process.exit(1);
+  }
+}
+
 const authRoutes    = require('./routes/auth');
 const stampsRoutes  = require('./routes/stamps');
 const profileRoutes = require('./routes/profile');
@@ -22,8 +32,23 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// ── CORS — pontos allowlista, soha nem wildcard ──────────────────────────────
+// A frontend ezekről a domainekről hívhatja az API-t. Ha kell több domain,
+// vesszővel elválasztva add meg a FRONTEND_URL env változóban.
+const ALLOWED_ORIGINS = [
+  'https://miapalya-2026.pages.dev',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : []),
+];
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, cb) => {
+    // origin nélküli kérés (pl. mobil app, curl, same-origin) → engedjük
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(null, false); // nem dobunk hibát, csak nem küldünk CORS fejlécet
+  },
   methods: ['GET','POST','PUT','DELETE'],
   allowedHeaders: ['Content-Type','Authorization']
 }));
@@ -45,7 +70,7 @@ app.use('/api/tokens',  tokensRoutes);
 app.use('/api/public',  publicRoutes);
 
 app.get('/api/health', (_req, res) =>
-  res.json({ status: 'ok', time: new Date().toISOString(), version: '4.0.0' })
+  res.json({ status: 'ok', time: new Date().toISOString(), version: '4.3.0' })
 );
 
 app.use((_req, res) => res.status(404).json({ error: 'NOT_FOUND' }));

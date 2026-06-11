@@ -558,6 +558,14 @@ const API = window.location.hostname==='localhost'
   ? 'http://localhost:3000'
   : 'https://miapalya-2026-production.up.railway.app';
 
+// HTML-escape — XSS védelem a felhasználói tartalmaknál (becenév, kiállító szöveg, push, stb.)
+function esc(s){
+  if(s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 let secLogPage = 0;
 const SEC_PAGE_SIZE = 10;
 let secLogAll = [];
@@ -767,7 +775,7 @@ async function loadLiveUsers(){
     const active=users.filter(u=>u.is_active).length;
     const lc=document.getElementById('live-count');if(lc)lc.textContent=`${active} aktív`;
     const dl=document.getElementById('dash-live');
-    if(dl){if(!users.length){dl.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs diák.</p>';} else {dl.innerHTML=`<table class="tbl"><thead><tr><th>Becenév</th><th>Pecsét</th><th>Státusz</th></tr></thead><tbody>${users.slice(0,8).map(u=>`<tr><td><strong>${u.nickname||'–'}</strong></td><td>${u.stamp_count}/8</td><td><span class="ldot ${u.is_active?'on':'off'}"></span>${u.is_active?'Aktív':'Inaktív'}</td></tr>`).join('')}</tbody></table>`;}}
+    if(dl){if(!users.length){dl.innerHTML='<p style="font-size:13px;color:var(--muted)">Még nincs diák.</p>';} else {dl.innerHTML=`<table class="tbl"><thead><tr><th>Becenév</th><th>Pecsét</th><th>Státusz</th></tr></thead><tbody>${users.slice(0,8).map(u=>`<tr><td><strong>${esc(u.nickname)||'–'}</strong></td><td>${u.stamp_count}/8</td><td><span class="ldot ${u.is_active?'on':'off'}"></span>${u.is_active?'Aktív':'Inaktív'}</td></tr>`).join('')}</tbody></table>`;}}
     renderUsersTable(users);
   }catch{}
 }
@@ -777,7 +785,7 @@ function renderUsersTable(users){
   if(!users.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nincs adat.</td></tr>';return;}
   tb.innerHTML=users.map(u=>`
     <tr>
-      <td><strong>${u.nickname||'–'}</strong></td>
+      <td><strong>${esc(u.nickname)||'–'}</strong></td>
       <td><code style="font-size:11px;background:var(--bg);padding:2px 5px;border-radius:4px">${u.token}</code></td>
       <td><strong>${u.stamp_count}</strong>/8</td>
       <td style="font-size:12px">${u.profile_id||'–'}</td>
@@ -1008,7 +1016,7 @@ async function loadPushHistory(){
   try{const r=await fetch(`${API}/api/admin/push`,{headers:authH()});if(!r.ok)throw new Error();
     const{messages}=await r.json();
     if(!messages.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nincs üzenet.</p>';return;}
-    c.innerHTML=`<table class="tbl"><thead><tr><th>Üzenet</th><th>Küldve</th><th>Idő</th><th>Státusz</th><th></th></tr></thead><tbody>${messages.map(m=>`<tr><td>${m.message.slice(0,50)}${m.message.length>50?'...':''}</td><td style="font-size:11px">${new Date(m.created_at).toLocaleTimeString('hu-HU')}</td><td>${m.duration_ms?m.duration_ms/1000+'mp':'∞'}</td><td><span class="badge ${m.active?'bg-g':'bg-n'}">${m.active?'Aktív':'Lejárt'}</span></td><td style="display:flex;gap:4px"><button class="btn by bxs" onclick="resendPush('${m.id}')" title="Újraküldés">↩ Újra</button><button class="btn bd bxs" onclick="deletePush('${m.id}')">✕</button></td></tr>`).join('')}</tbody></table>`;}
+    c.innerHTML=`<table class="tbl"><thead><tr><th>Üzenet</th><th>Küldve</th><th>Idő</th><th>Státusz</th><th></th></tr></thead><tbody>${messages.map(m=>`<tr><td>${esc(m.message.slice(0,50))}${m.message.length>50?'...':''}</td><td style="font-size:11px">${new Date(m.created_at).toLocaleTimeString('hu-HU')}</td><td>${m.duration_ms?m.duration_ms/1000+'mp':'∞'}</td><td><span class="badge ${m.active?'bg-g':'bg-n'}">${m.active?'Aktív':'Lejárt'}</span></td><td style="display:flex;gap:4px"><button class="btn by bxs" onclick="resendPush('${m.id}')" title="Újraküldés">↩ Újra</button><button class="btn bd bxs" onclick="deletePush('${m.id}')">✕</button></td></tr>`).join('')}</tbody></table>`;}
   catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
 }
 async function resendPush(id){try{const r=await fetch(`${API}/api/admin/push/${id}/resend`,{method:'POST',headers:authH()});if(r.ok){showToast('📤 Újraküldve!');loadPushHistory();}else showToast('Hiba');}catch{showToast('Szerver hiba');}}
@@ -1021,7 +1029,7 @@ async function loadDates(){
     const{dates}=await r.json();
     if(!dates.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nincs dátum.</p>';return;}
     const cats={iskola:'🎓',ceg:'🏢',egyeb:'📌'};
-    c.innerHTML=`<table class="tbl"><thead><tr><th>Esemény</th><th>Dátum</th><th>Hely</th><th></th></tr></thead><tbody>${dates.map(d=>`<tr><td><strong>${d.title}</strong> <span class="badge bg-n">${cats[d.category]||'📌'}</span>${d.link?` <a href="${d.link}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</td><td style="font-size:12px">${new Date(d.event_date).toLocaleDateString('hu-HU')}</td><td style="font-size:12px">${d.location||'–'}</td><td><button class="btn bd bxs" onclick="deleteDate('${d.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`;}
+    c.innerHTML=`<table class="tbl"><thead><tr><th>Esemény</th><th>Dátum</th><th>Hely</th><th></th></tr></thead><tbody>${dates.map(d=>`<tr><td><strong>${esc(d.title)}</strong> <span class="badge bg-n">${cats[d.category]||'📌'}</span>${d.link?` <a href="${esc(d.link)}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</td><td style="font-size:12px">${new Date(d.event_date).toLocaleDateString('hu-HU')}</td><td style="font-size:12px">${esc(d.location)||'–'}</td><td><button class="btn bd bxs" onclick="deleteDate('${d.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`;}
   catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
 }
 async function addDate(){
@@ -1039,7 +1047,7 @@ async function loadExhibitors(){
   try{const r=await fetch(`${API}/api/admin/exhibitors`,{headers:authH()});if(!r.ok)throw new Error();
     const{exhibitors}=await r.json();
     if(!exhibitors.length){c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Nincs kiállító.</p>';return;}
-    c.innerHTML=exhibitors.map(ex=>`<div class="ex-ad"><div class="ex-ad-h"><div class="ex-ad-i"><h4>${ex.name}</h4><p>${ex.zone_id?`${ZM[ex.zone_id]?.e||''} ${ZM[ex.zone_id]?.n||ex.zone_id}`:'–'}</p></div><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="badge ${ex.active?'bg-g':'bg-n'}">${ex.active?'Aktív':'Inaktív'}</span><button class="btn bo bxs" onclick="editEx(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️</button><button class="btn bd bxs" onclick="deleteEx('${ex.id}')">🗑</button></div></div>${ex.description?`<p style="padding:0 14px 11px;font-size:13px;color:var(--muted)">${ex.description}</p>`:''}</div>`).join('');}
+    c.innerHTML=exhibitors.map(ex=>`<div class="ex-ad"><div class="ex-ad-h"><div class="ex-ad-i"><h4>${esc(ex.name)}</h4><p>${ex.zone_id?`${ZM[ex.zone_id]?.e||''} ${ZM[ex.zone_id]?.n||ex.zone_id}`:'–'}</p></div><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="badge ${ex.active?'bg-g':'bg-n'}">${ex.active?'Aktív':'Inaktív'}</span><button class="btn bo bxs" onclick="editEx(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️</button><button class="btn bd bxs" onclick="deleteEx('${ex.id}')">🗑</button></div></div>${ex.description?`<p style="padding:0 14px 11px;font-size:13px;color:var(--muted)">${esc(ex.description)}</p>`:''}</div>`).join('');}
   catch{c.innerHTML='<p style="padding:16px;font-size:13px;color:var(--muted)">Betöltési hiba.</p>';}
 }
 function editEx(ex){
@@ -1138,7 +1146,7 @@ async function loadAdminUsers(){
       <colgroup><col style="width:30%"><col style="width:18%"><col style="width:12%"><col style="width:12%"><col style="width:28%"></colgroup>
       <thead><tr><th>E-mail</th><th>Szerepkör</th><th>Zóna</th><th>Státusz</th><th>Műveletek</th></tr></thead>
       <tbody>${users.map(u=>`<tr>
-        <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${u.email}">${u.email}</td>
+        <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${esc(u.email)}">${esc(u.email)}</td>
         <td><span class="badge bg-b">${rl[u.role]||u.role}</span></td>
         <td style="font-size:12px">${u.zone_id||'–'}</td>
         <td><span class="badge ${u.active?'bg-g':'bg-r'}">${u.active?'Aktív':'Letiltva'}</span></td>
@@ -1267,14 +1275,14 @@ async function loadExContent(){
       return `<div class="ex-ad">
         <div class="ex-ad-h">
           <div class="ex-ad-i">
-            <h4>${ex.name} ${isMine?'<span class="badge bg-b" style="font-size:10px">Saját</span>':''}</h4>
+            <h4>${esc(ex.name)} ${isMine?'<span class="badge bg-b" style="font-size:10px">Saját</span>':''}</h4>
             <p>${zone?`${zone.e} ${zone.n}`:'–'}${ex.website_url?` · <a href="${ex.website_url}" target="_blank" style="font-size:11px;color:var(--blue)">↗</a>`:''}</p>
           </div>
           <div style="display:flex;gap:4px">
             ${isMine?`<button class="btn bo bxs" onclick="editEx2(${JSON.stringify(ex).replace(/"/g,'&quot;')})">✏️ Szerk.</button>`:''}
           </div>
         </div>
-        ${ex.description?`<p style="padding:0 14px 11px;font-size:13px;color:var(--muted)">${ex.description}</p>`:''}
+        ${ex.description?`<p style="padding:0 14px 11px;font-size:13px;color:var(--muted)">${esc(ex.description)}</p>`:''}
       </div>`;
     }).join('');
 

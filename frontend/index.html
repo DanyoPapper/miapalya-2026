@@ -1123,7 +1123,7 @@ function startPushPolling(){
       const{message}=await r.json();
       if(message&&message.id!==lastPushId){lastPushId=message.id;showPush(message.message,message.duration_ms);}
     }catch{}
-  },5000);
+  },12000);
 }
 function showPush(msg,ms=10000){
   const b=document.getElementById('push-banner');
