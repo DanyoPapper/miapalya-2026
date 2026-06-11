@@ -142,6 +142,17 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
 @keyframes fadeUp{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:translateY(0)}}
 .stamp-hint{color:rgba(255,255,255,.45);font-size:12px;margin-top:18px;z-index:2;animation:fadeUp .5s .9s ease both}
 
+/* NICK CELEBRATION — Erus easter egg (konfetti + szívecskék) */
+.nick-celebrate{position:fixed;inset:0;z-index:520;display:none;align-items:center;justify-content:center;pointer-events:none}
+.nick-celebrate.show{display:flex}
+.nick-celebrate-wrap{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.nc-conf{position:absolute;animation:ncConfFall linear forwards}
+@keyframes ncConfFall{0%{transform:translateY(-30px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(900deg);opacity:0}}
+.nc-heart{position:absolute;bottom:-40px;animation:ncHeartRise ease-in forwards;opacity:0}
+@keyframes ncHeartRise{0%{transform:translateY(0) scale(.6) rotate(-8deg);opacity:0}15%{opacity:1}100%{transform:translateY(-115vh) scale(1.1) rotate(8deg);opacity:0}}
+.nick-celebrate-msg{position:relative;z-index:2;font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.5),0 0 30px rgba(255,215,0,.6);text-align:center;padding:0 24px;animation:ncMsgPop .6s cubic-bezier(.34,1.7,.5,1) both}
+@keyframes ncMsgPop{0%{transform:scale(0) rotate(-6deg);opacity:0}70%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+
 /* QR SCANNER */
 .qr-scanner-wrap{background:#000;border-radius:var(--r);overflow:hidden;position:relative;aspect-ratio:1;width:100%;max-width:280px;margin:0 auto}
 .qr-video{width:100%;height:100%;object-fit:cover;display:block}
@@ -295,6 +306,12 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
   <div class="stamp-collected">Pecsét begyűjtve! 🎉</div>
   <div class="stamp-count" id="sa-count">4 / 8 pecsét</div>
   <p class="stamp-hint">Koppints a folytatáshoz</p>
+</div>
+
+<!-- NICK CELEBRATION (Erus easter egg) -->
+<div class="nick-celebrate" id="nick-celebrate">
+  <div class="nick-celebrate-wrap" id="nick-celebrate-wrap"></div>
+  <div class="nick-celebrate-msg" id="nick-celebrate-msg">Szia! 🎉</div>
 </div>
 
 <!-- RESET MODAL -->
@@ -681,8 +698,54 @@ async function submitNick(){
     if(r.ok){const d=await r.json();if(d.sessionToken&&!state.sessionToken)state.sessionToken=d.sessionToken;}
   }catch{}
   saveState();
+
+  // ── Easter egg: "Erus" becenévnél konfetti + szívecske eső ────────────────
+  if(v.toLowerCase()==='erus'){
+    showNickCelebration(()=>{ setupQuiz(); goTo('s-quiz'); });
+    return;
+  }
+
   setupQuiz();
   goTo('s-quiz');
+}
+
+// ── BECENÉV ÜNNEPLÉS (Erus easter egg) ───────────────────────────────────────
+function showNickCelebration(done){
+  const ov=document.getElementById('nick-celebrate');
+  const wrap=document.getElementById('nick-celebrate-wrap');
+  wrap.innerHTML='';
+
+  const confColors=['#ffd700','#ff6b35','#22c55e','#3b82f6','#a855f7','#ec4899','#06b6d4','#fff'];
+  const hearts=['❤️','💖','💕','💗','💓','💞','🩷','💝'];
+
+  // Konfetti — felülről hullik
+  for(let i=0;i<70;i++){
+    const c=document.createElement('div');c.className='nc-conf';
+    const size=7+Math.random()*9;
+    const round=Math.random()>.5?'border-radius:50%':'border-radius:2px';
+    c.style.cssText=`left:${Math.random()*100}%;top:-30px;background:${confColors[i%confColors.length]};width:${size}px;height:${size}px;${round};animation-delay:${Math.random()*1.2}s;animation-duration:${2+Math.random()*1.5}s`;
+    wrap.appendChild(c);
+  }
+
+  // Szívecskék — alulról felfelé lebegnek
+  for(let i=0;i<24;i++){
+    const h=document.createElement('div');h.className='nc-heart';
+    h.textContent=hearts[i%hearts.length];
+    h.style.cssText=`left:${Math.random()*100}%;font-size:${20+Math.random()*22}px;animation-delay:${Math.random()*1.8}s;animation-duration:${2.4+Math.random()*1.6}s`;
+    wrap.appendChild(h);
+  }
+
+  // Középső üzenet
+  const msg=document.getElementById('nick-celebrate-msg');
+  if(msg) msg.textContent=`Szia, ${state.nickname}! 🎉`;
+
+  if(navigator.vibrate) navigator.vibrate([30,40,30,40,60]);
+
+  ov.classList.add('show');
+  setTimeout(()=>{
+    ov.classList.remove('show');
+    if(done) done();
+  }, 3500);
 }
 
 // ── QUIZ ───────────────────────────────────────────────────────────────────────
