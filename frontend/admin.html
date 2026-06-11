@@ -550,6 +550,14 @@ input:checked+.tog-sl:before{transform:translateX(24px)}
       </div>
     </div>
 
+    <!-- ── ANIMÁTOR QR (külön fül) ────────────────────────── -->
+    <div class="page" id="p-anim-qr">
+      <div class="alert al-g">📱 QR kód — a zónád aktuális QR kódja, amit a diákok beolvasnak.</div>
+      <div style="display:flex;justify-content:center;margin-top:8px">
+        <div style="max-width:220px;width:100%"><div id="anim-qr-wrap2"></div></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -694,6 +702,7 @@ function buildNav(role){
     // Animátor
     {s:'Animátor'},
     {id:'p-animator',  i:'🎪',l:'Animátor nézet',     r:['animator']},
+    {id:'p-anim-qr',   i:'📱',l:'QR kód',             r:['animator']},
     {id:'p-qr',        i:'📱',l:'QR tokenek',         r:['animator']},
     // Kiállító
     {s:'Kiállító'},
@@ -719,7 +728,8 @@ function navTo(pageId){
     'p-dates':'Fontos dátumok','p-exhibitors':'Kiállítók','p-map':'Térkép',
     'p-qr':'QR Tokenek','p-users':'Regisztráltak','p-security':'Biztonsági napló',
     'p-settings':'Felhasználókezelés','p-animator':'Animátor nézet',
-    'p-exhibitor':'Kiállító nézet','p-ex-content':'Tartalom szerkesztése','p-ex-qr':'Zóna QR kód'
+    'p-exhibitor':'Kiállító nézet','p-ex-content':'Tartalom szerkesztése','p-ex-qr':'Zóna QR kód',
+    'p-anim-qr':'Zóna QR kód'
   };
   document.getElementById('page-title').textContent=titles[pageId]||'';
   // Betöltés lap váltásnál
@@ -735,6 +745,7 @@ function navTo(pageId){
   if(pageId==='p-exhibitor')loadExhibitorDash(currentZoneId);
   if(pageId==='p-ex-content')loadExContent();
   if(pageId==='p-ex-qr')loadExQR();
+  if(pageId==='p-anim-qr')loadAnimQR();
 }
 
 function refreshAll(){
@@ -1335,6 +1346,14 @@ function loadExQR(){
   const wrap=document.getElementById('ex-qr-wrap2');
   if(!wrap)return;
   if(currentZoneId) loadSingleQR('ex-qr-wrap2', currentZoneId, true);
+  else wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs hozzárendelt zóna.</p>';
+}
+
+// Animátor QR fül — csak a saját zóna QR kódja, középen, timerrel
+function loadAnimQR(){
+  const wrap=document.getElementById('anim-qr-wrap2');
+  if(!wrap)return;
+  if(currentZoneId) loadSingleQR('anim-qr-wrap2', currentZoneId, true);
   else wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">Nincs hozzárendelt zóna.</p>';
 }
 
