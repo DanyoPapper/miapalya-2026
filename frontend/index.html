@@ -1037,6 +1037,11 @@ async function processQRCode(data){
     }else{
       status.textContent = d.message || 'Érvénytelen QR kód.';
       status.className   = 'qr-status err';
+      // Session lejárat — az oldal újratöltése új munkamenetet ad
+      if(d.error === 'SESSION_EXPIRED'){
+        setTimeout(()=>{ if(confirm('A munkameneted lejárt. Újratöltöd az oldalt?')) location.reload(); }, 500);
+        return;
+      }
       setTimeout(()=>{
         status.textContent='Próbáld újra.'; status.className='qr-status';
         const btn=document.getElementById('collect-btn');

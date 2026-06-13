@@ -776,7 +776,7 @@ async function loadZoneStats(){
     const dz=document.getElementById('dash-zones');
     if(dz)dz.innerHTML=zones.map(z=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:22px;text-align:center">${z.emoji}</span><div style="flex:1;background:var(--bg);border-radius:4px;height:18px;overflow:hidden"><div style="width:${Math.round(+z.visitors/max*100)}%;background:var(--blue);height:100%;border-radius:4px;display:flex;align-items:center;padding-left:5px">${+z.visitors>0?`<span style="font-size:10px;font-weight:600;color:#fff">${z.visitors}</span>`:''}</div></div><span style="font-size:11px;color:var(--muted);width:24px;text-align:right">${z.visitors}</span></div>`).join('');
     const az=document.getElementById('anim-zone-stats');
-    if(az)az.innerHTML=zones.map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">${z.emoji} ${z.name}</span><span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)">${z.visitors}</span></div>`).join('');
+    if(az)az.innerHTML=zones.map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px">${esc(z.emoji)} ${esc(z.name)}</span><span style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--blue)">${esc(String(z.visitors))}</span></div>`).join('');
   }catch{}
 }
 
@@ -878,7 +878,7 @@ async function loadQRZoneToggles(){
     }
     c.innerHTML = zones.map(z=>`
       <div class="toggle-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div class="tr-info"><h3 style="font-size:13px">${z.emoji||''} ${z.name}</h3></div>
+        <div class="tr-info"><h3 style="font-size:13px">${esc(z.emoji)||''} ${esc(z.name)}</h3></div>
         <label class="tog">
           <input type="checkbox" ${z.qr_enabled !== false ? 'checked' : ''}
             onchange="toggleZoneQR('${z.id}', this.checked, this)">

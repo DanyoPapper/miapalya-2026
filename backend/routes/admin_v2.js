@@ -1,13 +1,23 @@
 const router       = require('express').Router();
 const requireAdmin = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 const db           = require('../config/database');
 const bcrypt       = require('bcryptjs');
 const { generateToken, secondsUntilRotation } = require('../utils/totp');
 
+// URL validáció — csak http(s) URL-eket fogad el (javascript: és data: ellen)
+function validUrl(u) {
+  if (!u || typeof u !== 'string') return false;
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch { return false; }
+}
+
 router.use(requireAdmin);
 
 // ── Fesztivál státusz ─────────────────────────────────────────────────────────
-router.post('/festival/toggle', async (req, res) => {
+router.post('/festival/toggle', requireRole('admin'), async (req, res) => {
   try {
     const { active } = req.body;
     await db.query(
@@ -32,7 +42,7 @@ router.get('/festival/status', async (_req, res) => {
 });
 
 // ── QR globális kapcsoló ──────────────────────────────────────────────────────
-router.post('/qr/global', async (req, res) => {
+router.post('/qr/global', requireRole('admin'), async (req, res) => {
   try {
     const { enabled } = req.body;
     await db.query(
@@ -44,7 +54,7 @@ router.post('/qr/global', async (req, res) => {
 });
 
 // ── QR zóna kapcsoló ──────────────────────────────────────────────────────────
-router.post('/qr/zone/:zoneId', async (req, res) => {
+router.post('/qr/zone/:zoneId', requireRole('admin'), async (req, res) => {
   try {
     const { enabled } = req.body;
     const { zoneId }  = req.params;
@@ -97,21 +107,23 @@ router.get('/push', async (_req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.post('/push', async (req, res) => {
+router.post('/push', requireRole('admin'), async (req, res) => {
   try {
-    const { message, duration_ms = 10000 } = req.body;
+    let { message, duration_ms = 10000 } = req.body;
     if (!message?.trim()) return res.status(400).json({ error:'MISSING_MESSAGE' });
+    message = String(message).trim().slice(0, 280); // max 280 karakter (SMS-szerű)
+    duration_ms = Math.min(Math.max(parseInt(duration_ms) || 10000, 0), 600000); // 0–10 perc
     await db.query("UPDATE push_messages SET active=FALSE WHERE active=TRUE");
     const expiresAt = duration_ms > 0 ? new Date(Date.now() + duration_ms) : null;
     const { rows } = await db.query(
       'INSERT INTO push_messages(message,duration_ms,active,created_by,expires_at) VALUES($1,$2,TRUE,$3,$4) RETURNING *',
-      [message.trim(), duration_ms, req.admin.email, expiresAt]
+      [message, duration_ms, req.admin.email, expiresAt]
     );
     res.json({ success: true, message: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.post('/push/:id/resend', async (req, res) => {
+router.post('/push/:id/resend', requireRole('admin'), async (req, res) => {
   try {
     const { rows: orig } = await db.query('SELECT * FROM push_messages WHERE id=$1', [req.params.id]);
     if (!orig.length) return res.status(404).json({ error:'NOT_FOUND' });
@@ -126,7 +138,7 @@ router.post('/push/:id/resend', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.delete('/push/:id', async (req, res) => {
+router.delete('/push/:id', requireRole('admin'), async (req, res) => {
   try {
     await db.query('UPDATE push_messages SET active=FALSE WHERE id=$1', [req.params.id]);
     res.json({ success: true });
@@ -140,28 +152,36 @@ router.get('/dates', async (_req, res) => {
     res.json({ dates: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.post('/dates', async (req, res) => {
+router.post('/dates', requireRole('admin'), async (req, res) => {
   try {
-    const { title, event_date, location, description, category, link } = req.body;
+    let { title, event_date, location, description, category, link } = req.body;
     if (!title || !event_date) return res.status(400).json({ error:'MISSING_FIELDS' });
+    title       = String(title).slice(0, 150);
+    location    = location ? String(location).slice(0, 150) : null;
+    description = description ? String(description).slice(0, 1000) : null;
+    link        = validUrl(link) ? link.slice(0, 500) : null;
     const { rows } = await db.query(
       'INSERT INTO important_dates(title,event_date,location,description,category,link) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
-      [title, event_date, location||null, description||null, category||'egyeb', link||null]
+      [title, event_date, location, description, category||'egyeb', link]
     );
     res.json({ success: true, date: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.put('/dates/:id', async (req, res) => {
+router.put('/dates/:id', requireRole('admin'), async (req, res) => {
   try {
-    const { title, event_date, location, description, category, link, active } = req.body;
+    let { title, event_date, location, description, category, link, active } = req.body;
+    title       = String(title||'').slice(0, 150);
+    location    = location ? String(location).slice(0, 150) : null;
+    description = description ? String(description).slice(0, 1000) : null;
+    link        = validUrl(link) ? link.slice(0, 500) : null;
     const { rows } = await db.query(
       'UPDATE important_dates SET title=$1,event_date=$2,location=$3,description=$4,category=$5,link=$6,active=$7 WHERE id=$8 RETURNING *',
-      [title, event_date, location||null, description||null, category||'egyeb', link||null, active!==false, req.params.id]
+      [title, event_date, location, description, category||'egyeb', link, active!==false, req.params.id]
     );
     res.json({ success: true, date: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.delete('/dates/:id', async (req, res) => {
+router.delete('/dates/:id', requireRole('admin'), async (req, res) => {
   try {
     await db.query('DELETE FROM important_dates WHERE id=$1', [req.params.id]);
     res.json({ success: true });
@@ -175,36 +195,46 @@ router.get('/exhibitors', async (_req, res) => {
     res.json({ exhibitors: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.post('/exhibitors', async (req, res) => {
+router.post('/exhibitors', requireRole('admin','exhibitor'), async (req, res) => {
   try {
-    const { name, zone_id, description, youtube_url, website_url, logo_url } = req.body;
+    let { name, zone_id, description, youtube_url, website_url, logo_url } = req.body;
     if (!name) return res.status(400).json({ error:'MISSING_NAME' });
     if (req.admin.role === 'exhibitor' && req.admin.zoneId && zone_id !== req.admin.zoneId)
       return res.status(403).json({ error:'FORBIDDEN' });
+    // Hossz-korlátok
+    name        = String(name).slice(0, 120);
+    description = description ? String(description).slice(0, 2000) : null;
+    youtube_url = validUrl(youtube_url) ? youtube_url.slice(0, 500) : null;
+    website_url = validUrl(website_url) ? website_url.slice(0, 500) : null;
+    logo_url    = validUrl(logo_url)    ? logo_url.slice(0, 500)    : null;
     const { rows } = await db.query(
       'INSERT INTO exhibitors(name,zone_id,description,youtube_url,website_url,logo_url) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
-      [name, zone_id||null, description||null, youtube_url||null, website_url||null, logo_url||null]
+      [name, zone_id||null, description, youtube_url, website_url, logo_url]
     );
     res.json({ success: true, exhibitor: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.put('/exhibitors/:id', async (req, res) => {
+router.put('/exhibitors/:id', requireRole('admin','exhibitor'), async (req, res) => {
   try {
     if (req.admin.role === 'exhibitor') {
       const { rows: ex } = await db.query('SELECT zone_id FROM exhibitors WHERE id=$1', [req.params.id]);
       if (!ex.length || ex[0].zone_id !== req.admin.zoneId)
         return res.status(403).json({ error:'FORBIDDEN' });
     }
-    const { name, zone_id, description, youtube_url, website_url, logo_url, active } = req.body;
+    let { name, zone_id, description, youtube_url, website_url, logo_url, active } = req.body;
+    name        = String(name||'').slice(0, 120);
+    description = description ? String(description).slice(0, 2000) : null;
+    youtube_url = validUrl(youtube_url) ? youtube_url.slice(0, 500) : null;
+    website_url = validUrl(website_url) ? website_url.slice(0, 500) : null;
+    logo_url    = validUrl(logo_url)    ? logo_url.slice(0, 500)    : null;
     const { rows } = await db.query(
       'UPDATE exhibitors SET name=$1,zone_id=$2,description=$3,youtube_url=$4,website_url=$5,logo_url=$6,active=$7 WHERE id=$8 RETURNING *',
-      [name, zone_id||null, description||null, youtube_url||null, website_url||null, logo_url||null, active!==false, req.params.id]
+      [name, zone_id||null, description, youtube_url, website_url, logo_url, active!==false, req.params.id]
     );
     res.json({ success: true, exhibitor: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.delete('/exhibitors/:id', async (req, res) => {
-  if (req.admin.role === 'exhibitor') return res.status(403).json({ error:'FORBIDDEN' });
+router.delete('/exhibitors/:id', requireRole('admin'), async (req, res) => {
   try {
     await db.query('DELETE FROM exhibitors WHERE id=$1', [req.params.id]);
     res.json({ success: true });
@@ -212,19 +242,22 @@ router.delete('/exhibitors/:id', async (req, res) => {
 });
 
 // ── Térkép ────────────────────────────────────────────────────────────────────
-router.post('/map', async (req, res) => {
+router.post('/map', requireRole('admin'), async (req, res) => {
   try {
-    const { image_url, label } = req.body;
+    let { image_url, label } = req.body;
     if (!image_url) return res.status(400).json({ error:'MISSING_URL' });
+    if (!validUrl(image_url)) return res.status(400).json({ error:'INVALID_URL', message:'Csak érvényes http(s) URL adható meg.' });
+    image_url = image_url.slice(0, 1000);
+    label     = label ? String(label).slice(0, 150) : 'Fesztivál térkép';
     await db.query('UPDATE festival_map SET active=FALSE');
     const { rows } = await db.query(
       'INSERT INTO festival_map(image_url,label) VALUES($1,$2) RETURNING *',
-      [image_url, label||'Fesztivál térkép']
+      [image_url, label]
     );
     res.json({ success: true, map: rows[0] });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
-router.delete('/map/:id', async (req, res) => {
+router.delete('/map/:id', requireRole('admin'), async (req, res) => {
   try {
     await db.query('DELETE FROM festival_map WHERE id=$1', [req.params.id]);
     res.json({ success: true });
@@ -251,7 +284,7 @@ router.get('/stats', async (_req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.get('/users/live', async (_req, res) => {
+router.get('/users/live', requireRole('admin'), async (_req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT s.token, s.nickname, s.profile_id, s.created_at, s.last_seen,
@@ -333,14 +366,14 @@ router.post('/admin-users/:id/activate', async (req, res) => {
 });
 
 // ── Biztonsági napló ──────────────────────────────────────────────────────────
-router.get('/security-log', async (_req, res) => {
+router.get('/security-log', requireRole('admin'), async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM security_log ORDER BY created_at DESC LIMIT 100');
     res.json({ events: rows });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.post('/block-ip', async (req, res) => {
+router.post('/block-ip', requireRole('admin'), async (req, res) => {
   try {
     const { ip, reason } = req.body;
     await db.query(
@@ -351,7 +384,7 @@ router.post('/block-ip', async (req, res) => {
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }
 });
 
-router.get('/export', async (_req, res) => {
+router.get('/export', requireRole('admin'), async (_req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT s.token, COALESCE(s.nickname,'–') AS nickname, s.profile_id,

@@ -31,7 +31,28 @@ const PORT = process.env.PORT || 3000;
 // Trust Railway/Cloudflare proxy
 app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+// ── Biztonsági fejlécek (helmet) — CSP bekapcsolva, CDN-ek engedélyezve ──────
+// A frontend ezeket a külső forrásokat használja: Google Fonts, unpkg (html5-qrcode),
+// cdnjs (qrcodejs), a QR kép data: URI-ként generálódik.
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
+      styleSrc:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:    ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc:     ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://miapalya-2026-production.up.railway.app"],
+      mediaSrc:   ["'self'", "blob:"],
+      objectSrc:  ["'none'"],
+      frameSrc:   ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      baseUri:    ["'self'"],
+      formAction: ["'self'"],
+    }
+  },
+  crossOriginEmbedderPolicy: false, // a kamera/QR miatt
+  hsts: { maxAge: 15552000, includeSubDomains: true }, // 180 nap HTTPS kényszerítés
+}));
 
 // ── CORS — pontos allowlista, soha nem wildcard ──────────────────────────────
 // A frontend ezekről a domainekről hívhatja az API-t. Ha kell több domain,

@@ -1,12 +1,17 @@
 const router = require('express').Router();
 const db     = require('../config/database');
+const { profileLimiter } = require('../middleware/rateLimit');
 
-router.post('/save', async (req, res) => {
+router.post('/save', profileLimiter, async (req, res) => {
   try {
     const { sessionToken, quizAnswers, profileId } = req.body;
+    if (!sessionToken) return res.status(400).json({ error: 'MISSING_SESSION' });
+    // Méret-korlát: a quizAnswers max 50 elem, profileId max 50 karakter
+    const safeAnswers = Array.isArray(quizAnswers) ? quizAnswers.slice(0, 50) : [];
+    const safeProfileId = profileId ? String(profileId).slice(0, 50) : null;
     await db.query(
       'UPDATE sessions SET quiz_answers=$1,profile_id=$2 WHERE token=$3',
-      [JSON.stringify(quizAnswers), profileId, sessionToken]
+      [JSON.stringify(safeAnswers), safeProfileId, sessionToken]
     );
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error:'INTERNAL_ERROR' }); }

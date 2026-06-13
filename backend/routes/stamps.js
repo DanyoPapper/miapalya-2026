@@ -92,8 +92,18 @@ async function collectStamp(req, res, { sessionToken, zoneId, qrToken, ip }) {
     if (bl.length) return res.status(403).json({ error: 'BLOCKED' });
 
     // 3. Session
-    const { rows: sess } = await db.query('SELECT id FROM sessions WHERE token=$1', [sessionToken]);
+    const { rows: sess } = await db.query(
+      'SELECT id, created_at FROM sessions WHERE token=$1', [sessionToken]
+    );
     if (!sess.length) return res.status(400).json({ error: 'INVALID_SESSION' });
+    // Session lejárat — teszt jelleggel 24 óra (created_at-tól számítva)
+    const ageMs = Date.now() - new Date(sess[0].created_at).getTime();
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      return res.status(401).json({
+        error: 'SESSION_EXPIRED',
+        message: 'A munkameneted lejárt. Töltsd újra az oldalt a folytatáshoz!'
+      });
+    }
     const sessionId = sess[0].id;
 
     // 4. Zóna + zóna QR kapcsoló
