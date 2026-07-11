@@ -3,6 +3,8 @@ const db     = require('../config/database');
 const crypto = require('crypto');
 const jwt    = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { validateNickname, sanitizeNickname } = require('../utils/nickFilter');
+const { nicknameLimiter } = require('../middleware/rateLimit');
 
 // ── Diák session regisztrálás ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
@@ -25,16 +27,23 @@ router.post('/register', async (req, res) => {
 });
 
 // ── Becenév mentése (diák appból hívódik) ────────────────────────────────────
-router.post('/nickname', async (req, res) => {
+router.post('/nickname', nicknameLimiter, async (req, res) => {
   try {
     const { sessionToken, nickname } = req.body;
     if (!nickname?.trim()) return res.status(400).json({ error:'MISSING_NICKNAME' });
+
+    // Szerveroldali validáció (tárolt XSS és nem megfelelő nevek ellen)
+    const validationError = validateNickname(nickname);
+    if (validationError) {
+      return res.status(400).json({ error: 'INVALID_NICKNAME', message: validationError });
+    }
+    const clean = sanitizeNickname(nickname);
 
     // Ha van session token, frissítjük
     if (sessionToken) {
       await db.query(
         'UPDATE sessions SET nickname=$1, last_seen=NOW() WHERE token=$2',
-        [nickname.trim().slice(0,20), sessionToken]
+        [clean, sessionToken]
       );
       return res.json({ success: true });
     }
@@ -43,7 +52,7 @@ router.post('/nickname', async (req, res) => {
     const newToken = crypto.randomBytes(8).toString('hex').toUpperCase();
     await db.query(
       'INSERT INTO sessions(token, nickname) VALUES($1,$2) ON CONFLICT(token) DO UPDATE SET nickname=$2',
-      [newToken, nickname.trim().slice(0,20)]
+      [newToken, clean]
     );
     res.json({ success: true, sessionToken: newToken });
   } catch(e) { console.error(e); res.status(500).json({ error:'INTERNAL_ERROR' }); }

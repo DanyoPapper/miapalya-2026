@@ -19,7 +19,7 @@ exports.adminLimiter = rateLimit({
 exports.stampLimiter = rateLimit({
   windowMs: 60000, max: 30,
   standardHeaders: true, legacyHeaders: false,
-  validate: { xForwardedForHeader: false, keyGeneratorIpFallback: false },
+  validate: { xForwardedForHeader: false },
   keyGenerator: (req) => {
     const st = req.body && req.body.sessionToken;
     return st ? 'sess:' + st : 'ip:' + req.ip;
@@ -32,7 +32,7 @@ exports.stampLimiter = rateLimit({
 exports.nicknameLimiter = rateLimit({
   windowMs: 60000, max: 15,
   standardHeaders: true, legacyHeaders: false,
-  validate: { xForwardedForHeader: false, keyGeneratorIpFallback: false },
+  validate: { xForwardedForHeader: false },
   keyGenerator: (req) => {
     const st = req.body && req.body.sessionToken;
     return st ? 'sess:' + st : 'ip:' + req.ip;
@@ -45,7 +45,7 @@ exports.nicknameLimiter = rateLimit({
 exports.profileLimiter = rateLimit({
   windowMs: 60000, max: 20,
   standardHeaders: true, legacyHeaders: false,
-  validate: { xForwardedForHeader: false, keyGeneratorIpFallback: false },
+  validate: { xForwardedForHeader: false },
   keyGenerator: (req) => {
     const st = req.body && req.body.sessionToken;
     return st ? 'sess:' + st : 'ip:' + req.ip;

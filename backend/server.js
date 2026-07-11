@@ -91,7 +91,7 @@ app.use('/api/tokens',  tokensRoutes);
 app.use('/api/public',  publicRoutes);
 
 app.get('/api/health', (_req, res) =>
-  res.json({ status: 'ok', time: new Date().toISOString(), version: '4.3.0' })
+  res.json({ status: 'ok', time: new Date().toISOString(), version: '4.7.1' })
 );
 
 app.use((_req, res) => res.status(404).json({ error: 'NOT_FOUND' }));
