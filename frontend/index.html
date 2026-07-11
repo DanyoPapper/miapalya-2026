@@ -607,56 +607,49 @@ let datesPollTimer = null;
 // Engedélyezett: magyar + latin betűk, számok, max 1 egymást követő szóköz
 // Tiltott: speciális karakterek, szitokszavak, rasszista kifejezések
 
-const NICK_BLACKLIST = [
-  // Magyar szitokszavak
-  'kurva','fasz','baszik','baszd','baszom','baszott','kibaszott','megbaszott',
-  'szar','szaros','szarja','geci','gecis','pöcs','pöcsöm','segg','segget',
-  'segger','pina','pinás','ribanc','ribancok','rohadék','rohadt','dögölj',
-  'ökör','bika','állat','idióta','hülye','takony','taknyos','köcsög',
-  'buzi','buzis','meleg','melegek','retard','retardált','spasztics',
-  // Rasszista / népcsoportot sértő (magyar)
-  'cigány','cigányok','cigányozom','büdöscigány','zsidó','zsidók','zsidózom',
-  'néger','négerek','fekete','kínai','mongol','mongolos',
-  // Angol szitokszavak
-  'fuck','fucking','fucked','fucker','shit','shitting','bitch','bastard',
-  'asshole','dickhead','cunt','whore','slut','cock','prick','pussy',
-  'wanker','twat','bollocks','motherfucker','motherfucking',
-  // Rasszista / angol
-  'nigger','nigga','negro','chink','spic','kike','faggot','dyke','retard',
-  'nazi','hitler','fascist',
-  // Egyéb
-  'terrorist','pedofil','pedophile',
+// ── Becenév szűrő — a backend nickFilter.js-szel AZONOS logika ──────────────
+const NICK_SUBSTRING = [
+  'kurva','kurvanyad','kirva','k1rva','fasz','faszfej','faszkalap','baszik',
+  'baszd','baszom','baszott','baszdmeg','bazdmeg','kibaszott','megbaszott',
+  'geci','gecis','gecifej','pocs','pocsom','picsa','segg','segget','segger',
+  'pina','pinas','ribanc','ribancok','rohadek','rohadt','szar','szaros',
+  'szarja','szarhazi','dogolj','idiota','takony','taknyos','kocsog','buzi',
+  'buzis','spasztics','retardalt',
+  'cigany','ciganyok','ciganyozom','budoscigany','zsido','zsidok','zsidozom',
+  'neger','negerek',
+  'fuck','fucking','fucked','fucker','shit','shitting','bitch','bastard','kill',
+  'asshole','dickhead','dick','cunt','whore','slut','cock','prick','pussy',
+  'wanker','twat','bollocks','motherfucker','motherfucking','retard','faggot',
+  'dyke','blowjob','dildo',
+  'nigger','nigga','negro','chink','spic','kike','nazi','hitler','heilhitler',
+  'whitepower','fascist','fasiszta',
+  'terrorist','terror','isis','pedofil','pedophile','bomb','murder','gyilkos',
+  'porno','porn','anal','cum',
 ];
-
+const NICK_EXACT = [
+  'admin','administrator','root','system','owner','support','moderator','mod',
+  'staff','szervezo','rendszergazda','tanar','szemelyzet','sex','kkk',
+];
+const NICK_ACCENTS = {'á':'a','é':'e','í':'i','ó':'o','ö':'o','ő':'o','ú':'u','ü':'u','ű':'u'};
+function nickNormalize(s, leet){
+  let t = String(s||'').toLowerCase().replace(/[áéíóöőúüű]/g, c => NICK_ACCENTS[c]||c);
+  if(leet) t = t.replace(/@/g,'a').replace(/\$/g,'s');
+  t = t.replace(/[^a-z0-9]/g,'');
+  if(leet) t = t.replace(/4/g,'a').replace(/3/g,'e').replace(/1/g,'i').replace(/0/g,'o').replace(/5/g,'s').replace(/7/g,'t').replace(/8/g,'b').replace(/9/g,'g');
+  return t;
+}
 function filterNickname(v) {
-  const trimmed = v?.trim() || '';
-
-  // Hossz
+  const trimmed = (v||'').trim();
   if (trimmed.length < 2) return 'Legalább 2 karakter szükséges!';
   if (trimmed.length > 20) return 'Maximum 20 karakter lehet!';
-
-  // Csak számok
   if (/^\d+$/.test(trimmed)) return 'A becenév nem állhat csak számokból!';
-
-  // Engedélyezett karakterek: betű (unicode), szám, szóköz
-  if (/[^a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ0-9 ._-]/.test(trimmed)) {
-    return 'Csak betűket, számokat és szóközt használhatsz!';
-  }
-
-  // Egymást követő szóközök
+  if (/[^a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ0-9 ._-]/.test(trimmed)) return 'Csak betűket, számokat és szóközt használhatsz!';
   if (/  /.test(trimmed)) return 'Egymást követő szóközök nem engedélyezettek!';
-
-  // Szóközzel kezdés/végzés
-  if (trimmed !== v.trim()) return 'Szóközzel nem kezdődhet vagy végződhet!';
-
-  // Blacklist ellenőrzés
-  const lower = trimmed.toLowerCase().replace(/\s/g, '');
-  for (const word of NICK_BLACKLIST) {
-    if (lower.includes(word)) {
-      return 'Ez a becenév nem megfelelő. Kérj segítséget egy szervezőtől!';
-    }
-  }
-
+  const basic = nickNormalize(trimmed, false);
+  const leet  = nickNormalize(trimmed, true);
+  for (const w of NICK_SUBSTRING) if (basic.includes(w) || leet.includes(w)) return 'Ez a becenév nem megfelelő. Válassz másikat!';
+  const bN = basic.replace(/\d+$/,''), lN = leet.replace(/\d+$/,'');
+  for (const w of NICK_EXACT) if (basic===w||leet===w||bN===w||lN===w) return 'Ez a név nem választható. Válassz másikat!';
   return null; // OK
 }
 
