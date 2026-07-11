@@ -2,8 +2,22 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Mi a pálya? 2026</title>
+
+<!-- PWA — telepíthető alkalmazás -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a8a">
+<meta name="description" content="Műszaki Pályaválasztó Fesztivál — Mi a pálya? 2026">
+
+<!-- iOS / iPadOS PWA támogatás -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi a pálya?">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
+
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--blue:#1a3a8a;--blue2:#2a50b8;--orange:#ff6b35;--yellow:#ffd700;--green:#16a34a;--gl:#dcfce7;--red:#dc2626;--rl:#fee2e2;--bg:#f5f4f0;--card:#fff;--text:#1a1a2e;--muted:#6b7280;--border:rgba(26,58,138,0.12);--r:18px;--rs:10px}
@@ -272,6 +286,15 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
 /* TOAST */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) scale(.9);background:var(--blue);color:#fff;padding:11px 18px;border-radius:30px;font-size:14px;font-weight:500;z-index:998;transition:all .3s;opacity:0;white-space:nowrap;pointer-events:none}
 .toast.show{transform:translateX(-50%) scale(1);opacity:1}
+/* PWA telepítő sáv */
+.install-bar{position:fixed;bottom:-120px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:366px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px 16px;z-index:997;transition:bottom .4s cubic-bezier(.34,1.4,.6,1);box-shadow:0 8px 30px rgba(26,58,138,.22);display:flex;align-items:center;gap:12px}
+.install-bar.show{bottom:16px}
+.install-bar img{width:44px;height:44px;border-radius:11px;flex-shrink:0}
+.install-bar .ib-txt{flex:1;min-width:0}
+.install-bar .ib-txt b{font-family:'Syne',sans-serif;font-size:14px;color:var(--text);display:block}
+.install-bar .ib-txt span{font-size:12px;color:var(--muted);line-height:1.35}
+.install-bar .ib-btn{background:var(--blue);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;flex-shrink:0}
+.install-bar .ib-x{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -284,6 +307,17 @@ html,body{height:100%;background:#e8e6e0;font-family:'DM Sans',sans-serif;oversc
   <button class="push-close" onclick="closePush()">×</button>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- PWA telepítő sáv -->
+<div class="install-bar" id="install-bar">
+  <img src="/assets/icon-192.png" alt="Mi a pálya? app ikon">
+  <div class="ib-txt">
+    <b>Telepítsd az appot!</b>
+    <span id="install-hint">Tedd ki a kezdőképernyőre az élményért.</span>
+  </div>
+  <button class="ib-btn" id="install-btn" onclick="doInstall()">Telepítés</button>
+  <button class="ib-x" onclick="dismissInstall()" aria-label="Bezárás">×</button>
+</div>
 
 <!-- STAMP ANIMATION -->
 <div class="stamp-overlay" id="stamp-overlay" onclick="closeStampAnim()">
@@ -1407,5 +1441,81 @@ init();
 </script>
 <!-- html5-qrcode — megbízható QR scanner minden platformon -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<!-- PWA — Service Worker regisztráció (telepíthető app + offline app-héj) -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* ha nem sikerül, az app a szokásos módon működik tovább */
+    });
+  });
+}
+
+// ── PWA telepítő sáv ─────────────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+const INSTALL_DISMISS_KEY = 'miapalya_install_dismissed';
+
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS
+}
+function showInstallBar(){
+  // Ne mutassuk, ha már telepítve van, vagy ha a user elutasította
+  if(isStandalone()) return;
+  try{ if(localStorage.getItem(INSTALL_DISMISS_KEY)) return; }catch{}
+  const bar = document.getElementById('install-bar');
+  if(bar) setTimeout(()=>bar.classList.add('show'), 2500);
+}
+
+// Android / Chrome: elkapjuk a natív telepítési eseményt
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('install-btn');
+  if(btn) btn.style.display = '';
+  showInstallBar();
+});
+
+// Ha telepítették, elrejtjük a sávot
+window.addEventListener('appinstalled', () => {
+  const bar = document.getElementById('install-bar');
+  if(bar) bar.classList.remove('show');
+  deferredInstallPrompt = null;
+});
+
+async function doInstall(){
+  if(deferredInstallPrompt){
+    // Android natív telepítés
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    dismissInstall();
+  } else if(isIOS()){
+    // iOS-en nincs natív prompt — megmutatjuk a lépéseket
+    alert('A telepítéshez:\n\n1. Koppints a Megosztás gombra (a böngésző alján, a négyzet felfelé nyíllal)\n2. Görgess le és válaszd a "Kezdőképernyőhöz adás" opciót\n3. Koppints a "Hozzáadás" gombra');
+  }
+}
+function dismissInstall(){
+  const bar = document.getElementById('install-bar');
+  if(bar) bar.classList.remove('show');
+  try{ localStorage.setItem(INSTALL_DISMISS_KEY, '1'); }catch{}
+}
+
+// iOS-en nincs beforeinstallprompt, ezért ott külön indítjuk a sávot
+window.addEventListener('load', () => {
+  if(isIOS() && !isStandalone()){
+    const btn = document.getElementById('install-btn');
+    const hint = document.getElementById('install-hint');
+    if(btn) btn.textContent = 'Hogyan?';
+    if(hint) hint.textContent = 'Megosztás → Kezdőképernyőhöz adás.';
+    showInstallBar();
+  }
+});
+</script>
 </body>
 </html>

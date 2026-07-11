@@ -3,12 +3,16 @@
   "short_name": "Mi a pálya?",
   "description": "Műszaki Pályaválasztó Fesztivál — Magyar Elektrotechnikai Egyesület",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1a3a8a",
   "theme_color": "#1a3a8a",
   "orientation": "portrait",
+  "lang": "hu",
+  "categories": ["education", "events"],
   "icons": [
-    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
